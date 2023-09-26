@@ -62,7 +62,7 @@ void SysMonitor(void *t) {
             printf("Allocated Pages:%ld \r\n", xPortGetAllocatedPages());
             printf("Free Pages:%ld \r\n", xPortGetFreePages());
             printf("Free Total:%ld Bytes\r\n", minfo.fordblks + xPortGetFreeHeapSize());
-            ///if(!app_is_running())
+            if(!app_is_running())
             {
                 printf("memory trim:%d,%d\r\n", xPortHeapTrimFreePage(), malloc_trim(0));
             }
@@ -71,6 +71,8 @@ void SysMonitor(void *t) {
         }
 #endif
         vTaskDelay(pdMS_TO_TICKS(1000 * (uint32_t)t));
+
+
     }
 }
 
@@ -101,37 +103,19 @@ int sys_query_key()
     return ret;
 }
 
+static char ss[2];  
 void sys() {
     uint32_t ticks = 0;
-    vTaskDelay(pdMS_TO_TICKS(100));
+    bsp_diaplay_clean(0xFF); 
+    vTaskDelay(pdMS_TO_TICKS(1000));
     bsp_keyboard_init();
     bsp_display_init();
     gdb_server_init();
     sls_init();
-    app_api_init();
-
-    bsp_diaplay_clean(0xFF); 
-
-    //uint8_t *p = calloc(1,370*1024);
-    //volatile uint8_t *q = (volatile uint8_t *)p+2048;
-
-   // register uint32_t tk asm("r0");
+    app_api_init(); 
+    
     while (1) {
-
-  
         
-         // __asm volatile("ldr r0,=1000":::"r0");
-         // __asm volatile("swi #0xD701"); 
-
-         //
-         // __asm volatile("swi #0xD704": "=r"(tk));
-         // printf("tk:%ld\r\n", tk);
-        //*q = 0x32;
-        //ll_mm_trim_vaddr((uint32_t)q);
-
-
-        bsp_display_flush();
-
         bsp_scan_key(key_tab1);
         for (int y = 0; y < KEY_ROWS; y++) {
             for (int x = 0; x < KEY_COLS; x++) {

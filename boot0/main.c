@@ -274,7 +274,7 @@ const struct lfs_config cfg = {
     .lookahead_size = 512,
     .block_cycles = 1000,
 };
-
+extern uint8_t flashID[6];
 void do_conf() {
     void httpd_init(void);
     tud_init(BOARD_TUD_RHPORT);
@@ -287,7 +287,14 @@ void do_conf() {
         ;
     httpd_init();
     // http_set_ssi_handler(test_ssi_handler, NULL, 0);
-
+    char fid[32];
+    for(int i = 0 ; i < 4; i++)
+    {
+        sprintf(&fid[i*2],"%02X",flashID[i]);
+    }
+    
+    bsp_display_put_string(0, 3 * 16, "Flash ID:");
+    bsp_display_put_string(9*8, 3 * 16, fid);
     bsp_display_put_string(0, 4 * 16, "USB RNDIS ON.");
     bsp_display_put_string(0, 5 * 16, "[Views] : Reboot");
     bsp_display_put_string(0, 6 * 16, "Connect to computer and access:");

@@ -23,6 +23,7 @@
 #define LLAPI_APP_QUERY_KEY                (LLAPI_SWI_BASE + 9)
 #define LLAPI_APP_RTC_GET_S                (LLAPI_SWI_BASE + 10)
 #define LLAPI_APP_RTC_SET_S                (LLAPI_SWI_BASE + 11)
+#define LLAPI_APP_GET_KEY                  (LLAPI_SWI_BASE + 12)
 
 
 #define LL_SWI_FS_SIZE                 (LL_SWI_BASE + 119)
@@ -54,12 +55,28 @@
 #define LL_SWI_FS_GET_DIROBJ_SZ                (LL_SWI_BASE + 143)
 
 
+#define LL_SWI_MMAP             (LL_SWI_BASE + 107)
+#define LL_SWI_MUNMAP           (LL_SWI_BASE + 108)
+
+
 #define FS_FILE_TYPE_REG   (1)
 #define FS_FILE_TYPE_DIR   (2)
 
 typedef void* fs_obj_t;
 typedef void* fs_dir_obj_t;
 
+#ifndef MMAP_INFO
+#define MMAP_INFO
+typedef struct mmap_info
+{
+    uint32_t map_to;
+    const char *path;
+    uint32_t offset;
+    uint32_t size;
+    bool writable;
+    bool writeback;
+}mmap_info;
+#endif
 
 #ifdef __cplusplus
     extern "C" {
@@ -104,6 +121,9 @@ DECDEF_LLAPI_SWI(const char *,  llapi_fs_dir_cur_item_name,  (fs_dir_obj_t dir_o
 DECDEF_LLAPI_SWI(uint32_t,      llapi_fs_dir_cur_item_size,  (fs_dir_obj_t dir_obj)                      ,LL_SWI_FS_DIR_GET_CUR_SIZE   );
 DECDEF_LLAPI_SWI(int,           llapi_fs_dir_cur_item_type,  (fs_dir_obj_t dir_obj)                      ,LL_SWI_FS_DIR_GET_CUR_TYPE   );
 
+
+DECDEF_LLAPI_SWI(int,               llapi_mmap,              (mmap_info *info)                           ,LL_SWI_MMAP                  );
+DECDEF_LLAPI_SWI(void,              llapi_mumap,             (int map)                                   ,LL_SWI_MUNMAP                );
 
 #ifdef __cplusplus          
     }          

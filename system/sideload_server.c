@@ -75,7 +75,7 @@ static void udp_recv_proc(void *arg, struct udp_pcb *upcb, struct pbuf *p, const
         printf("SLS_REC:NO MEM!\r\n");
         return;
     }
-
+    #if 0
     if (CMD_CMP("PUT_")) {
         if (app_is_running()) {
             if (pending_paddr && pending_vaddr) {
@@ -130,7 +130,9 @@ static void udp_recv_proc(void *arg, struct udp_pcb *upcb, struct pbuf *p, const
         //
         // printf("rest frame:%08lx\r\n", ((uint32_t *)pending_task)[1] );
 
-    } else if (CMD_CMP("UPLOAD_")) {
+    } else 
+    #endif
+    if (CMD_CMP("UPLOAD_")) {
         if (sls_upload) {
             ll_fs_close(sls_upload);
             free(sls_upload);
@@ -191,7 +193,9 @@ static void udp_recv_proc(void *arg, struct udp_pcb *upcb, struct pbuf *p, const
     } else if (CMD_CMP("KILL")) {
         app_stop();
         ((char *)out->payload)[0] = 'T';
-    } else if (CMD_CMP("SLS_START")) {
+    } 
+    #if 0
+    else if (CMD_CMP("SLS_START")) {
         last_vaddr = 0;
         pending_paddr = 0;
         pending_vaddr = 0;
@@ -202,6 +206,7 @@ static void udp_recv_proc(void *arg, struct udp_pcb *upcb, struct pbuf *p, const
         app_start();
         ((char *)out->payload)[0] = 'T';
     }
+    #endif
 
     memcpy(&(((char *)out->payload)[1]), &rec_len, 4);
 

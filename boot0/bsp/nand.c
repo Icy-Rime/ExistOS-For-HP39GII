@@ -980,7 +980,7 @@ void bsp_nand_reset()
     GPMI_SendCMD(FlashSendCommandBuffer, 0, 0, 0, 0);
     bsp_delayus(20);
 }
-
+uint8_t flashID[6];
 uint32_t* bsp_nand_getid()
 {
     FlashSendCommandBuffer[0] = 0x90;
@@ -988,6 +988,7 @@ uint32_t* bsp_nand_getid()
     GPMI_SendCMD(FlashSendCommandBuffer, FlashSendParaBuffer, 1, FlashRecCommandBuffer, 6);
     INFO("Flash ID:\r\n");
     for(int i = 0; i < 6;i++){
+        flashID[i] = ((uint8_t *)FlashRecCommandBuffer)[i];
         INFO("%02x ", ((uint8_t *)FlashRecCommandBuffer)[i] );
     }
     INFO("\n");

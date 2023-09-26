@@ -176,6 +176,19 @@ void __attribute__((naked)) __attribute__((target("arm"))) sys_svc()
     case LLAPI_APP_QUERY_KEY:
         pRegFram[0 + 2] = sys_query_key();
         break;
+    case LLAPI_APP_GET_KEY:
+        {
+            app_api_info_t info;
+            uint32_t ShouldYield = 0;
+            info.task = (TaskHandle_t)pxCurrentTCB;
+            info.code = swi_code;
+            xQueueSendFromISR(app_api_queue, &info, &ShouldYield);
+            if(ShouldYield)
+            {
+                vTaskSwitchContext(); 
+            }
+        }
+        break;
     case 0x55:
         vTaskSwitchContext(); 
         break;

@@ -241,39 +241,13 @@ void GDB_Server_Initialization(void)
     tcp_server_pcb = tcp_listen(tcp_server_pcb);
     tcp_accept(tcp_server_pcb, TCPServerAccept);
 }
-
  
-static int f(int k)
-{
-    
-    if(k == 10)
-    {
-        //*((uint16_t *)0xF0000000) = 0x12;
-    }
-    if(k)
-    {
-        return k * f(k-1);
-    }else{
-        return 1;
-    }
-}
-
-
-void test_task() {
-    while (1) {
-        f(30);
-        vTaskDelay(pdMS_TO_TICKS(10));
-        //printf("tick..\r\n");
-    }
-}
 
 void gdb_server_init() 
 {
     streamBuf = malloc(1024);
     sendBuf = malloc(2048);
- 
-    xTaskCreate(test_task, "testTask", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-
+   
     printf("Start gdb server\r\n");
     GDB_Server_Initialization();
 }

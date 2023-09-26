@@ -615,6 +615,7 @@ void bsp_display_putk_string(uint32_t x, uint32_t y, char *s, uint32_t fg, uint3
     for (int n = 0; n < str_len; n++)
     {
         char c = s[n];
+        if((c > '~') || (c < ' '))continue;
         uint32_t ch = c - ' ';
         uint8_t *p = &font[fontSize * ch];
         for (int y_ = 0; y_ < fontSize; y_++)

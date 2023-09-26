@@ -6,6 +6,8 @@
 #include "sys_mmap.h"
 
 
+#ifndef MMAP_INFO
+#define MMAP_INFO
 typedef struct mmap_info
 {
     uint32_t map_to;
@@ -15,6 +17,7 @@ typedef struct mmap_info
     bool writable;
     bool writeback;
 }mmap_info;
+#endif
 
 #define LL_SWI_BASE                     (0xEE00)
 #define LL_SWI_SET_IRQ_VECTOR           (LL_SWI_BASE + 8)

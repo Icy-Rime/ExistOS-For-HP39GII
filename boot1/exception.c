@@ -109,21 +109,21 @@ void volatile __attribute__((target("arm"))) __attribute__((naked)) arm_vector_u
     {
         printf("sys context:%d: %08lX\r\n",i, und_context_ptr[i]);
     }
-        while (1);
+        //while (1);
     
       __asm volatile("add sp,sp,#56"); // 14*4
 
-      __asm volatile("mov r6,sp");
-      __asm volatile("mrs r1,cpsr_all");
-      __asm volatile("bic r1,r1,#0x1f");
-      __asm volatile("orr r1,r1,#0x1f");
-      __asm volatile("msr cpsr_all,r1");
-      //  __asm volatile("mov r7,sp"); 
-      //  __asm volatile("ldr r8,=svc_stack");
-      //  __asm volatile("ldr sp,[r8]");
-      __asm volatile("mov sp,r6");
-      //__asm volatile("sub sp,sp,#0x200");
-      __asm volatile("mov lr,r7");
+      //__asm volatile("mov r6,sp");
+      //__asm volatile("mrs r1,cpsr_all");
+      //__asm volatile("bic r1,r1,#0x1f");
+      //__asm volatile("orr r1,r1,#0x1f");
+      //__asm volatile("msr cpsr_all,r1");
+      ////  __asm volatile("mov r7,sp"); 
+      ////  __asm volatile("ldr r8,=svc_stack");
+      ////  __asm volatile("ldr sp,[r8]");
+      //__asm volatile("mov sp,r6");
+      ////__asm volatile("sub sp,sp,#0x200");
+      //__asm volatile("mov lr,r7");
 
  
         __asm volatile("ldr r5,=und_context_ptr");
@@ -132,7 +132,7 @@ void volatile __attribute__((target("arm"))) __attribute__((naked)) arm_vector_u
         __asm volatile("str r4,[r5]");
         
         __asm volatile("mov r1,#4");
-        __asm volatile("ldr r2,=sys_dab_base");
+        __asm volatile("ldr r2,=sys_pab_base");
         __asm volatile("ldr r2,[r2]");
         __asm volatile("bx r2"); 
 

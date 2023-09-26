@@ -51,3 +51,7 @@ DECDEF_LLAPI_SWI(const char *,  llapi_fs_dir_cur_item_name,  (fs_dir_obj_t dir_o
 DECDEF_LLAPI_SWI(uint32_t,      llapi_fs_dir_cur_item_size,  (fs_dir_obj_t dir_obj)                      ,LL_SWI_FS_DIR_GET_CUR_SIZE   );
 DECDEF_LLAPI_SWI(int,           llapi_fs_dir_cur_item_type,  (fs_dir_obj_t dir_obj)                      ,LL_SWI_FS_DIR_GET_CUR_TYPE   );
 
+
+DECDEF_LLAPI_SWI(int,               llapi_mmap,              (mmap_info *info)                           ,LL_SWI_MMAP                  );
+DECDEF_LLAPI_SWI(void,              llapi_mumap,             (int map)                                   ,LL_SWI_MUNMAP                );
+

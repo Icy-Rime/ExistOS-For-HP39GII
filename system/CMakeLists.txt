@@ -54,8 +54,8 @@ ADD_LIBRARY(tinyusb_sys ${TINYUSB_SRCS})
 target_link_libraries(sys.elf PRIVATE 
 -Wl,--wrap=_malloc_r 
 -Wl,--wrap=_free_r 
--Wl,--wrap=printf 
--Wl,--wrap=_printf_r
+#-Wl,--wrap=printf 
+#-Wl,--wrap=_printf_r
 #-Wl,--wrap=_calloc_r
 #-Wl,--wrap=_realloc_r
  lwip_sys tinyusb_sys freertos xprintfc
@@ -64,11 +64,11 @@ target_link_libraries(sys.elf PRIVATE
 -T ${CMAKE_SOURCE_DIR}/system/script/ld.lds)
  
 
-target_compile_options(xprintfc PRIVATE -mtune=arm926ej-s -mcpu=arm926ej-s -mlittle-endian -mfloat-abi=soft -mthumb  -Og   )
-target_compile_options(lwip_sys PRIVATE -mtune=arm926ej-s -mcpu=arm926ej-s -mlittle-endian -mfloat-abi=soft -marm  -Og   )
-target_compile_options(tinyusb_sys PRIVATE -mtune=arm926ej-s -mcpu=arm926ej-s -mlittle-endian -mfloat-abi=soft -marm  -Og   )
-target_compile_options(freertos PRIVATE -mtune=arm926ej-s -mcpu=arm926ej-s -mlittle-endian -mfloat-abi=soft -marm  -Og  )
-target_compile_options(sys.elf PRIVATE -mtune=arm926ej-s -mcpu=arm926ej-s -mlittle-endian -mfloat-abi=soft -marm -Og  ) 
+target_compile_options(xprintfc PRIVATE -mtune=arm926ej-s -mcpu=arm926ej-s -mlittle-endian -mfloat-abi=soft -mthumb  -Os   )
+target_compile_options(lwip_sys PRIVATE -mtune=arm926ej-s -mcpu=arm926ej-s -mlittle-endian -mfloat-abi=soft -marm  -Os   )
+target_compile_options(tinyusb_sys PRIVATE -mtune=arm926ej-s -mcpu=arm926ej-s -mlittle-endian -mfloat-abi=soft -marm  -Os   )
+target_compile_options(freertos PRIVATE -mtune=arm926ej-s -mcpu=arm926ej-s -mlittle-endian -mfloat-abi=soft -marm  -Os  )
+target_compile_options(sys.elf PRIVATE -mtune=arm926ej-s -mcpu=arm926ej-s -mlittle-endian -mfloat-abi=soft -marm -Os  ) 
 
    
 add_custom_command(TARGET sys.elf POST_BUILD
