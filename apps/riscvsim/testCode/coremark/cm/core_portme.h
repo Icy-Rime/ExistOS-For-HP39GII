@@ -11,7 +11,7 @@
 #define CORE_PORTME_H
 
 //#define ITERATIONS 5000
-#define ITERATIONS 100
+#define ITERATIONS 70
 #define FLAGS_STR "-march=rv32ima -mabi=ilp32 -O3"
 
 /************************/

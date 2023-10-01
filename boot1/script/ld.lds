@@ -105,6 +105,7 @@ SECTIONS
 	pgt_start = .;
 	. = . + pgt_size;
 	pgt_end = .;
+	
   	. = ALIGN(4096);
 	page_frame_start = .;
 	. = . + page_frame_size;

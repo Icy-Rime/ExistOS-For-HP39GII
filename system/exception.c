@@ -211,6 +211,24 @@ void __attribute__((naked)) __attribute__((target("arm"))) sys_svc()
     case LLAPI_APP_IS_KEY_DOWN: 
         pRegFram[0 + 2] = bsp_is_key_down(pRegFram[0 + 2]); 
         break;
+    case LL_SWI_THREAD_CREATE:
+    {
+            app_api_info_t info;
+            uint32_t ShouldYield = 0;
+            info.task = (TaskHandle_t)pxCurrentTCB;
+            info.code = swi_code;
+            info.par0 = pRegFram[0 + 2];
+            info.par1 = pRegFram[1 + 2];
+            info.par2 = pRegFram[2 + 2];
+            info.par3 = pRegFram[3 + 2];
+            info.context = &pRegFram[0 + 2];
+            xQueueSendFromISR(app_api_queue, &info, &ShouldYield);
+            if(ShouldYield)
+            {
+                vTaskSwitchContext(); 
+            }
+    }
+        break;
     case 0x55:
         vTaskSwitchContext(); 
         break;

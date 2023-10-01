@@ -31,7 +31,7 @@ aux_source_directory(./cm ${APP_NAME}_SRCS)
 aux_source_directory(. ${APP_NAME}_SRCS)
 add_executable(${APP_NAME}.elf  ${${APP_NAME}_SRCS})
 
-target_compile_options(${APP_NAME}.elf PRIVATE -march=rv32ima -mabi=ilp32 -Os  ) 
+target_compile_options(${APP_NAME}.elf PRIVATE -march=rv32ima -mabi=ilp32 -O3  ) 
 target_link_libraries(${APP_NAME}.elf PRIVATE  
 -lnosys -lc -lm -lgcc  -nostartfiles   
 -T ${CMAKE_SOURCE_DIR}/ld.lds)

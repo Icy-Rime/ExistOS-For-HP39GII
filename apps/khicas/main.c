@@ -6,8 +6,7 @@
 
  
 void start_khicas();
-
-int kcas_main(int isAppli, unsigned short OptionNum);
+ 
 int main()
 {
     printf("Start App..\r\n");

@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#define MAX_DECODE_BLOCKS ((1 << 10) - 1)
+#define MAX_DECODE_BLOCKS ((1 << 6) - 1)
 //#define INS_PER_DB (16)
 
 #define ENABLE_RV32C (1)

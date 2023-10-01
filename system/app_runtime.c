@@ -102,15 +102,22 @@ uint32_t app_get_ram_size()
     return exp_mem_size;
 }
 
-
-static void exp_main_thread(void *par) {
+uint32_t runPar;
+static void exp_thread_start(void *par) {
 
     __asm volatile("mrs r1,cpsr_all");
     __asm volatile("bic r1,r1,#0x1f");
     __asm volatile("orr r1,r1,#0x10");
     __asm volatile("msr cpsr_all,r1"); 
- 
-    __asm volatile("blx r0");
+    
+
+    void (*r)();
+    r = par;
+    r(runPar);
+    //__asm volatile("mov r1,r0");
+    //__asm volatile("ldr r0,=runPar");
+    //__asm volatile("ldr r0,[r0]");
+    //__asm volatile("blx r1");
 
     vTaskDelete(NULL);
     while (1) { 
@@ -226,7 +233,7 @@ void app_start()
     
     sprintf(tid_buf, "app_t%d", tid);
     app_task_handle[tid] = xTaskCreateStatic(
-          exp_main_thread, 
+          exp_thread_start, 
           tid_buf, 
           exp_main_thread_stack_sz, 
           (void *)(APP_ROM_MAP_ADDR + 32)
@@ -357,6 +364,36 @@ void app_api_task(void *p)
         {
             switch (info.code)
             {
+                case LL_SWI_THREAD_CREATE:
+                    info.context[0] = -1;
+                    for(int i = 0; i < EXP_MAX_ALLOW_THREADS; i++)
+                    {
+                        if(app_task_handle[i] == 0)
+                        {
+                            char tbuf[8];
+                            sprintf(tbuf, "app_t%d", i);
+                            //app_task_handle[i] = xTaskCreateStatic(
+                            //    (TaskFunction_t)info.par0, 
+                            //    tbuf, 
+                            //    info.par2 / 4, 
+                            //    (void *)info.par3,
+                            //    1, 
+                            //    (StackType_t *)info.par1, 
+                            //    &app_tcb[i]);
+                            runPar = info.par3;
+                            app_task_handle[i] = xTaskCreateStatic(
+                                (TaskFunction_t)exp_thread_start, 
+                                tbuf, 
+                                info.par2 / 4, 
+                                (void *)info.par0,
+                                1, 
+                                (StackType_t *)info.par1, 
+                                &app_tcb[i]);
+                            info.context[0] = i;
+                            break;
+                        }
+                    }
+                    break;
                 case LLAPI_APP_DELAY_MS:
                     vOtherTaskDelay(info.task, pdMS_TO_TICKS(info.par0));
                     break; 
@@ -436,10 +473,12 @@ void app_api_task(void *p)
                 ll_fs_write(f, &wr_u8, 1);
 
                 tcb_floc = ll_fs_tell(f);
-                ll_fs_write(f, &tid, 1);
-                for(int i = 0; i < tid; i++)
+                wr_u8 = EXP_MAX_ALLOW_THREADS;
+                ll_fs_write(f, &wr_u8, 1);
+                //ll_fs_write(f, &tid, 1);
+                for(int i = 0; i < EXP_MAX_ALLOW_THREADS; i++)
                 {
-                    if(app_task_handle[i])
+                    //if(app_task_handle[i])
                     {
                         pre_save_tcb(app_task_handle[i]);
                         ll_fs_write(f, &app_tcb[i], sizeof(StaticTask_t));

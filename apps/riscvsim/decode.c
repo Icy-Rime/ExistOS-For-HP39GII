@@ -20,7 +20,8 @@ int DecodeInit()
 
 int GetCachedDBByAddr(uint32_t src_pc, DecodeBlock **DB, uint32_t *offset)
 {
-    /*
+    
+
     for (int i = 0; i < MAX_DECODE_BLOCKS; i++)
     {
         if (DBs[i].src_codes_length > 0)
@@ -29,25 +30,26 @@ int GetCachedDBByAddr(uint32_t src_pc, DecodeBlock **DB, uint32_t *offset)
             {
                 *DB = &DBs[i];
                 *offset = src_pc - DBs[i].src_pc;
+                //DBs[i].exec_cnt++;
                 return 0;
             }
         }
     }
-    */
-    uint32_t mask_i = address_hash(src_pc);
-    if (DBCacheSlot[mask_i])
-    {
-        uint32_t lower = DBCacheSlot[mask_i]->src_pc;
-        uint32_t upper = DBCacheSlot[mask_i]->src_pc + DBCacheSlot[mask_i]->src_codes_length;
-        if ((src_pc >= lower) &&
-            (src_pc < upper))
-        {
-            // printf("search:%08x, found:[%08x,%08x)\n",src_pc, lower, upper);
-            *DB = DBCacheSlot[mask_i];
-            *offset = src_pc - DBCacheSlot[mask_i]->src_pc;
-            return 0;
-        }
-    }
+    
+    //uint32_t mask_i = address_hash(src_pc);
+    //if (DBCacheSlot[mask_i])
+    //{
+    //    uint32_t lower = DBCacheSlot[mask_i]->src_pc;
+    //    uint32_t upper = DBCacheSlot[mask_i]->src_pc + DBCacheSlot[mask_i]->src_codes_length;
+    //    if ((src_pc >= lower) &&
+    //        (src_pc < upper))
+    //    {
+    //        // printf("search:%08x, found:[%08x,%08x)\n",src_pc, lower, upper);
+    //        *DB = DBCacheSlot[mask_i];
+    //        *offset = src_pc - DBCacheSlot[mask_i]->src_pc;
+    //        return 0;
+    //    }
+    //}
 
     *DB = NULL;
     *offset = 0;
@@ -62,7 +64,18 @@ DecodeBlock *PrepareNewDB(uint32_t src_pc)
     if (minimum_i == MAX_DECODE_BLOCKS)
         minimum_i = 0;
 
-    DBCacheSlot[address_hash(src_pc)] = &DBs[minimum_i];
+    //uint32_t minimum_i = 0;
+    //uint32_t minimum_exec_cnt = -1;
+    //for(int i = 0; i < MAX_DECODE_BLOCKS; i++)
+    //{
+    //    if(DBs[i].exec_cnt < minimum_exec_cnt)
+    //    {
+    //        minimum_exec_cnt = DBs[i].exec_cnt;
+    //        minimum_i = i;
+    //    }
+    //}
+
+    //DBCacheSlot[address_hash(src_pc)] = &DBs[minimum_i];
 
     DBs[minimum_i].src_pc = src_pc;
     DBs[minimum_i].IR_Length = 0;
@@ -72,7 +85,7 @@ DecodeBlock *PrepareNewDB(uint32_t src_pc)
         free(DBs[minimum_i].Ins);
         DBs[minimum_i].Ins = NULL;
     }
-    // DBs[minimum_i].exec_cnt = 1;
+    //DBs[minimum_i].exec_cnt = 1;
     return &DBs[minimum_i];
 }
 
@@ -90,7 +103,7 @@ int DBInsertIRCode(DecodeBlock *DB,
     DB->Ins = newirc;
     DB->Ins[DB->IR_Length] = IRC;
     DB->IR_Length++;
-    if(DB->IR_Length > 16)
+    if(DB->IR_Length > 127)
        return 1;
     return 0;
     //if (INS_PER_DB - DB->IR_Length > 3)
@@ -412,7 +425,7 @@ int DecodeSrc(uint32_t VirtAddr)
             imm <<= 19;
             imm >>= 19;
 
-            st = 0;
+            //st = 0;
             switch (funct3)
             {
                 INSERT_BRUNCH_INS(0x0, IR_OPCODE_BEQ, rs1, rs2, curVaddr + imm);
@@ -852,7 +865,7 @@ int DecodeSrc(uint32_t VirtAddr)
                 IRC.rs2 = 0;
                 IRC.imm = curVaddr + simm;
                 ret = DBInsertIRCode(curDB, IRC);
-                st = 0;
+                //st = 0;
                 break;
             }
 
@@ -875,7 +888,7 @@ int DecodeSrc(uint32_t VirtAddr)
                 IRC.rs2 = 0;
                 IRC.imm = curVaddr + simm;
                 ret = DBInsertIRCode(curDB, IRC);
-                st = 0;
+                //st = 0;
                 break;
             }
 

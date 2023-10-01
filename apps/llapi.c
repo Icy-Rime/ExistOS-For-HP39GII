@@ -59,3 +59,5 @@ DECDEF_LLAPI_SWI(int,           llapi_fs_dir_cur_item_type,  (fs_dir_obj_t dir_o
 DECDEF_LLAPI_SWI(int,               llapi_mmap,              (mmap_info *info)                           ,LLAPI_MMAP                  );
 DECDEF_LLAPI_SWI(void,              llapi_mumap,             (int map)                                   ,LLAPI_MUNMAP                );
 
+
+DECDEF_LLAPI_SWI(int,           llapi_thread_create,     (void *code, uint32_t *stack, uint32_t stackSz, void *par)  ,LL_SWI_THREAD_CREATE    );

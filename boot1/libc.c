@@ -61,7 +61,7 @@ void __wrap_printf(const char * fmt,...)
     va_end(list);
 }
 
-
+#if 0
 #define LBLOCKSIZE (sizeof(long))
 #define UNALIGNED(X)   ((long)X & (LBLOCKSIZE - 1))
 #define TOO_SMALL(LEN) ((LEN) < LBLOCKSIZE)
@@ -113,7 +113,7 @@ void *memset (void *m, int c, size_t n)
     *s++ = (char) c;
   return m;
 }
-/*
+#else
 void * memset(void *p, int c, size_t sz)
 {
     char *q = (char *)p;
@@ -124,7 +124,8 @@ void * memset(void *p, int c, size_t sz)
         sz--;
     }
     return p;
-}*/
+}
+#endif
 
 int puts(const char *s)
 {

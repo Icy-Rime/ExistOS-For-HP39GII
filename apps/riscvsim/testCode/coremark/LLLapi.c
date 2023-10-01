@@ -1,17 +1,17 @@
 
 #include "LLLapi.h"
 
-//volatile uint32_t *PORT_TICK = (volatile uint32_t *)0xEFFF000c;
-//volatile uint32_t *PORT_STDOUT = (volatile uint32_t *)0xe9000000;
+volatile uint32_t *PORT_TICK = (volatile uint32_t *)0xEFFF000c;
+volatile uint32_t *PORT_STDOUT = (volatile uint32_t *)0xe9000000;
 
 
-volatile uint32_t *PORT_TICK = (volatile uint32_t *)(0x02004000 + 0x7FF8);
-volatile uint32_t *PORT_STDOUT = (volatile uint32_t *)(0x10000000);
+//volatile uint32_t *PORT_TICK = (volatile uint32_t *)(0x02004000 + 0x7FF8);
+//volatile uint32_t *PORT_STDOUT = (volatile uint32_t *)(0x10000000);
 
 
 uint32_t get_tick_ms()
 {
-    return *PORT_TICK / 10000;
+    return *PORT_TICK ;/// 10000;
 }
 
 void delay(uint32_t ms)

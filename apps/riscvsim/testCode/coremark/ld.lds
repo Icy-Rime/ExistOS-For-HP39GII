@@ -9,12 +9,12 @@ MEMORY
     ram   (wxa!ri) : ORIGIN = 0x20000000, LENGTH = 32K  */
 
     /* Run in RAM */  
-    /*
+    
     flash (rxai!w) : ORIGIN = 0x70000000, LENGTH = 512k
-    ram   (wxa!ri) : ORIGIN = 0x80000000, LENGTH = 64K*/
+    ram   (wxa!ri) : ORIGIN = 0x80000000, LENGTH = 64K
 
-    flash (rxai!w) : ORIGIN = 0x80400000, LENGTH = 128k
-    ram   (wxa!ri) : ORIGIN = 0x80100000, LENGTH = 128k
+   /* flash (rxai!w) : ORIGIN = 0x80400000, LENGTH = 128k
+    ram   (wxa!ri) : ORIGIN = 0x80100000, LENGTH = 128k*/
 
     
 }

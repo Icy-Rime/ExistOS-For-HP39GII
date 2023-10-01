@@ -1,4 +1,5 @@
 #pragma once
+#include <stdint.h>
 
 #define MEMORY_BASE  (0x80000000)
 #define MEMORY_SIZE  (64 * 1024)

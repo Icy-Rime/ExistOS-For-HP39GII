@@ -549,43 +549,49 @@ int IRCodeExec(DecodeBlock *DB, uint32_t offset, uint32_t *next_pc)
         }
         case IR_OPCODE_AMOADD_W:
         {
+            if(INS->rd)
             memoryVirtAddrRead(REG[INS->rs1], 4, &REG[INS->rd]);
-            REG[0] = 0;
+            //REG[0] = 0;
             memoryVirtAddrWrite(REG[INS->rs1], 4, (int32_t)REG[INS->rd] + REG[INS->rs2]);
             break;
         }
         case IR_OPCODE_AMOAND_W:
         {
+            if(INS->rd)
             memoryVirtAddrRead(REG[INS->rs1], 4, &REG[INS->rd]);
-            REG[0] = 0;
+            //REG[0] = 0;
             memoryVirtAddrWrite(REG[INS->rs1], 4, (uint32_t)REG[INS->rd] & REG[INS->rs2]);
             break;
         }
         case IR_OPCODE_AMOOR_W:
-        {
+        {   
+            if(INS->rd)
             memoryVirtAddrRead(REG[INS->rs1], 4, &REG[INS->rd]);
-            REG[0] = 0;
+            //REG[0] = 0;
             memoryVirtAddrWrite(REG[INS->rs1], 4, (uint32_t)REG[INS->rd] | REG[INS->rs2]);
             break;
         }
         case IR_OPCODE_AMOXOR_W:
         {
+            if(INS->rd)
             memoryVirtAddrRead(REG[INS->rs1], 4, &REG[INS->rd]);
-            REG[0] = 0;
+            //REG[0] = 0;
             memoryVirtAddrWrite(REG[INS->rs1], 4, (uint32_t)REG[INS->rd] ^ REG[INS->rs2]);
             break;
         }
         case IR_OPCODE_AMOMAX_W:
         {
+            if(INS->rd)
             memoryVirtAddrRead(REG[INS->rs1], 4, &REG[INS->rd]);
-            REG[0] = 0;
+            //REG[0] = 0;
             memoryVirtAddrWrite(REG[INS->rs1], 4, __max((int32_t)REG[INS->rd], (int32_t)REG[INS->rs2]));
             break;
         }
         case IR_OPCODE_AMOMIN_W:
         {
+            if(INS->rd)
             memoryVirtAddrRead(REG[INS->rs1], 4, &REG[INS->rd]);
-            REG[0] = 0;
+            //REG[0] = 0;
             memoryVirtAddrWrite(REG[INS->rs1], 4, __min((int32_t)REG[INS->rd], (int32_t)REG[INS->rs2]));
             break;
         }
@@ -624,6 +630,7 @@ void *ThreadCheck(void *arg)
     {
         _sleep(1);
 #else
+    while(1)
     {
 #endif
         printf("Freq:%.2f MIPS, acc:%f, loop_cnt:%d\n",
@@ -632,6 +639,7 @@ void *ThreadCheck(void *arg)
                loop_cnt);
         Instructions = 0;
         miss = hit = loop_cnt = 0;
+        llapi_delay_ms(1000);
 #if defined(_WIN64) || defined(_WIN32)
         if (kbhit())
         {
@@ -661,6 +669,8 @@ void simulatorStart(uint32_t pc)
     pthread_create(&th, NULL, ThreadCheck, NULL);
     printf("Create thread.\n");
 #endif
+    
+    llapi_thread_create(ThreadCheck, malloc(1024), 1024, NULL);
 
     // DecodeSrc(0);
     while (run)
@@ -688,6 +698,8 @@ void simulatorStart(uint32_t pc)
         }
         else
         {
+
+            //printf("l:%d\r\n",DB->IR_Length);
             do
             {
                 hit++;
@@ -706,16 +718,16 @@ void simulatorStart(uint32_t pc)
                 if ((pc >= DB->src_pc) && (pc < DB->src_pc + DB->src_codes_length))
                 {
                     offset = pc - DB->src_pc;
-                    inloop = 1;
-                    //loop_cnt++;
-                    //if (loop_cnt > 1000000)
-                    //{
-                    //    inloop = 0;
-                    //}
-                    //else
-                    //{
-                    //    inloop = 1;
-                    //}
+                    //inloop = 1;
+                     loop_cnt++;
+                     if (loop_cnt > 1000000)
+                     {
+                         inloop = 0;
+                     }
+                     else
+                     {
+                         inloop = 1;
+                     }
                 }
                 else
                 {
