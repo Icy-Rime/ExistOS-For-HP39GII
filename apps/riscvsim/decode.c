@@ -6,14 +6,14 @@
 #define DB_CACHE_SOCKET (MAX_DECODE_BLOCKS)
 
 DecodeBlock DBs[MAX_DECODE_BLOCKS];
-DecodeBlock *DBCacheSocket[(MAX_DECODE_BLOCKS + 1)];
+DecodeBlock *DBCacheSlot[(MAX_DECODE_BLOCKS + 1)];
 
 #define address_hash(x) ((x >> 2) & DB_CACHE_SOCKET)
 
 int DecodeInit()
 {
     memset(DBs, 0, sizeof(DBs));
-    memset(DBCacheSocket, 0, sizeof(DBCacheSocket));
+    memset(DBCacheSlot, 0, sizeof(DBCacheSlot));
     printf("IR Cache SZ:%d\n", (uint32_t)sizeof(DBs));
     return 0;
 }
@@ -35,16 +35,16 @@ int GetCachedDBByAddr(uint32_t src_pc, DecodeBlock **DB, uint32_t *offset)
     }
     */
     uint32_t mask_i = address_hash(src_pc);
-    if (DBCacheSocket[mask_i])
+    if (DBCacheSlot[mask_i])
     {
-        uint32_t lower = DBCacheSocket[mask_i]->src_pc;
-        uint32_t upper = DBCacheSocket[mask_i]->src_pc + DBCacheSocket[mask_i]->src_codes_length;
+        uint32_t lower = DBCacheSlot[mask_i]->src_pc;
+        uint32_t upper = DBCacheSlot[mask_i]->src_pc + DBCacheSlot[mask_i]->src_codes_length;
         if ((src_pc >= lower) &&
             (src_pc < upper))
         {
             // printf("search:%08x, found:[%08x,%08x)\n",src_pc, lower, upper);
-            *DB = DBCacheSocket[mask_i];
-            *offset = src_pc - DBCacheSocket[mask_i]->src_pc;
+            *DB = DBCacheSlot[mask_i];
+            *offset = src_pc - DBCacheSlot[mask_i]->src_pc;
             return 0;
         }
     }
@@ -62,11 +62,16 @@ DecodeBlock *PrepareNewDB(uint32_t src_pc)
     if (minimum_i == MAX_DECODE_BLOCKS)
         minimum_i = 0;
 
-    DBCacheSocket[address_hash(src_pc)] = &DBs[minimum_i];
+    DBCacheSlot[address_hash(src_pc)] = &DBs[minimum_i];
 
     DBs[minimum_i].src_pc = src_pc;
     DBs[minimum_i].IR_Length = 0;
     DBs[minimum_i].src_codes_length = 0;
+    if(DBs[minimum_i].Ins)
+    {
+        free(DBs[minimum_i].Ins);
+        DBs[minimum_i].Ins = NULL;
+    }
     // DBs[minimum_i].exec_cnt = 1;
     return &DBs[minimum_i];
 }
@@ -75,18 +80,32 @@ int DBInsertIRCode(DecodeBlock *DB,
                    IRCode IRC)
 {
 
-    if (INS_PER_DB - DB->IR_Length > 3)
+
+
+    IRCode *newirc = realloc(DB->Ins,(DB->IR_Length + 1) * sizeof(IRCode));
+    if(!newirc)
     {
-        DB->Ins[DB->IR_Length] = IRC;
-        DB->IR_Length++;
-        return 0;
+        printf("No mem!\r\n");
     }
-    else // if (INS_PER_DB - DB->IR_Length > 0)
-    {
-        DB->Ins[DB->IR_Length] = IRC;
-        DB->IR_Length++;
-        return 1;
-    } /*
+    DB->Ins = newirc;
+    DB->Ins[DB->IR_Length] = IRC;
+    DB->IR_Length++;
+    if(DB->IR_Length > 16)
+       return 1;
+    return 0;
+    //if (INS_PER_DB - DB->IR_Length > 3)
+    //{
+    //    DB->Ins[DB->IR_Length] = IRC;
+    //    DB->IR_Length++;
+    //    return 0;
+    //}
+    //else // if (INS_PER_DB - DB->IR_Length > 0)
+    //{
+    //    DB->Ins[DB->IR_Length] = IRC;
+    //    DB->IR_Length++;
+    //    return 1;
+    //}
+     /*
      else
      {
          return -1;

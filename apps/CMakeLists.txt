@@ -6,4 +6,5 @@ add_subdirectory(wasm3)
 add_subdirectory(faultTask)   
 add_subdirectory(riscvsim)   
 add_subdirectory(helloworld)   
+add_subdirectory(gameboy)   
      

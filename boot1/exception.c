@@ -146,10 +146,11 @@ void volatile __attribute__((target("arm"))) __attribute__((naked)) arm_vector_u
 #define LL_SWI_SET_SVC_VECTOR         (LL_SWI_BASE + 13)
 #define LL_SWI_SET_MEM_TRIM           (LL_SWI_BASE + 100)
 #define LL_SWI_MEM_IS_VAILD             (LL_SWI_BASE + 101)
+#define LL_SWI_MEM_IS_DIRTY             (LL_SWI_BASE + 116)
 
 #define LL_SWI_SET_DAB_VECTOR            (LL_SWI_BASE + 102)
 #define LL_SWI_SET_PAB_VECTOR            (LL_SWI_BASE + 103)
-#define LL_SWI_SET_APP_MEM_WARP          (LL_SWI_BASE + 104)
+#define LL_SWI_SET_APP_MEM_WRAP          (LL_SWI_BASE + 104)
 #define LL_SWI_GET_PENDING_PGFOFF          (LL_SWI_BASE + 105)
 #define LL_SWI_GET_PENDING_PGADDR         (LL_SWI_BASE + 106)
 #define LL_SWI_MMAP             (LL_SWI_BASE + 107)
@@ -160,6 +161,7 @@ void volatile __attribute__((target("arm"))) __attribute__((naked)) arm_vector_u
 #define LL_SWI_GET_VADDR_LOCK          (LL_SWI_BASE + 112)
 #define LL_SWI_SET_SVC_STACK           (LL_SWI_BASE + 113)
 #define LL_SWI_EXIT_SYS_SVC            (LL_SWI_BASE + 114)
+#define LL_SWI_GET_BOOT0_LOG_CHAR      (LL_SWI_BASE + 115)
 
 #define LL_SWI_FS_SIZE                 (LL_SWI_BASE + 119)
 #define LL_SWI_FS_REMOVE               (LL_SWI_BASE + 120)
@@ -219,7 +221,6 @@ typedef struct fs_dir_obj_t
     lfs_dir_t dir;
     struct lfs_info info;
 }fs_dir_obj_t;
-
 
 
 int trasnlateLfsErrCode(int err)
@@ -285,6 +286,12 @@ void __attribute__((target("arm")))  do_svc(uint32_t *cur_sp)
     //printf("sp:%p\r\n", cur_sp);
 
     switch (swi_code) {
+    case LL_SWI_GET_BOOT0_LOG_CHAR:
+        {
+            uint8_t boot1_log_get_ch();
+            cur_sp[0] = boot1_log_get_ch();
+        }
+        break;
     case LL_SWI_FS_REMOVE:
         if(!is_addr_vaild(cur_sp[0], 0)){mem_chk_err(swi_code, cur_sp[0], cur_sp[1]); cur_sp[0] = -EINVAL; break;}
         cur_sp[0] = trasnlateLfsErrCode(lfs_remove(&lfs, (const char *)cur_sp[0]));
@@ -440,7 +447,7 @@ void __attribute__((target("arm")))  do_svc(uint32_t *cur_sp)
         cur_sp[0] = sizeof(fs_obj_t);
         break;
     case LL_SWI_FS_GET_DIROBJ_SZ:
-        cur_sp[0] = sizeof(fs_dir_obj_t);
+        cur_sp[0] = sizeof(fs_dir_obj_t)*2;
         break;
 
     case LL_SWI_SET_IRQ_VECTOR:
@@ -480,8 +487,11 @@ void __attribute__((target("arm")))  do_svc(uint32_t *cur_sp)
     case LL_SWI_MEM_IS_VAILD:
         cur_sp[0] = is_addr_vaild(cur_sp[0], 0);
         break;
-    case LL_SWI_SET_APP_MEM_WARP:
-        mm_set_app_mem_warp(cur_sp[0], cur_sp[1]);
+    case LL_SWI_MEM_IS_DIRTY:
+        cur_sp[0] = is_addr_dirty(cur_sp[0]);
+        break;
+    case LL_SWI_SET_APP_MEM_WRAP:
+        mm_set_app_mem_wrap(cur_sp[0], cur_sp[1]);
         break;
     case LL_SWI_GET_PENDING_PGADDR:
         cur_sp[0] = side_load_pending_paddr;

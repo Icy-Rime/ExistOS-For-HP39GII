@@ -14,7 +14,6 @@ int main()
     llapi_fs_dir_mkdir("/exp/testa");
     llapi_fs_dir_mkdir("/exp/testa/testb");
 
-    //((uint32_t *)0x12340000)[0] = 1;
     for(int y = 0; y < 64; y++)
     {
         for(int x = 0; x < 256; x++)
@@ -31,6 +30,7 @@ int main()
         }
     }
 
+    ((uint32_t *)0x12340000)[0] = 1;
 
     while (1)
     {

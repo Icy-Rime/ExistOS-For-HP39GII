@@ -52,6 +52,7 @@ typedef struct mmap_table_t
     uint32_t size;
 //    l2_tiny_page_desc_t *pgt;
     lfs_file_t *f;
+    //lfs_file_t f;
     bool writable;
     bool writeback;
 }mmap_table_t;
@@ -75,7 +76,7 @@ int mmap(uint32_t to_addr, const char *path, uint32_t offset, uint32_t size, boo
 
 void clean_file_page(uint32_t page);
 
-void mm_set_app_mem_warp(uint32_t svaddr, uint32_t pages);
+void mm_set_app_mem_wrap(uint32_t svaddr, uint32_t pages);
 
 uint32_t mm_trim_page(uint32_t vaddr);
 
@@ -83,8 +84,9 @@ int do_dab(uint8_t FSR, uint32_t faddr, uint32_t pc, uint8_t faultMode) ;
 
 uint32_t mm_vaddr_map_pa(uint32_t vaddr);
 
+uint32_t is_addr_dirty(uint32_t vaddr);
+
 uint32_t is_addr_vaild(uint32_t vaddr, bool writable);
- 
 
 uint32_t mm_lock_vaddr(uint32_t vaddr, uint32_t lock);
 

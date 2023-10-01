@@ -20,6 +20,7 @@ typedef struct app_api_info_t
     uint32_t par1;
     uint32_t par2;
     uint32_t par3;
+    uint32_t *context; 
 }app_api_info_t;
 
 
@@ -34,3 +35,6 @@ uint32_t app_get_ram_size();
 void app_stop();
 
 void app_start();
+void app_selector_stop();
+void app_selector_start();
+

@@ -4,42 +4,111 @@
 #include "queue.h"
 #include "../apps/llapi.h"
 
+
+#define STATE_SAVE_DIR      "/expsave"
+
+typedef struct file_list_t
+{
+    struct file_list_t *next;
+    char *fname;
+    int type;
+    uint32_t size;
+}file_list_t;
+
+file_list_t *app_sel_flist = NULL;
+
+
+
+#define EXP_MAX_ALLOW_THREADS   (4)
+#define EXP_MAX_ALLOW_MMAPS     (3)
+
 QueueHandle_t app_api_queue;
 
-static void *app_mem_warp_alloc = NULL;
-static uint32_t app_mem_warp_at = 0;
-static uint32_t app_mem_size = 0;
-static volatile bool app_running = false;
-static StaticTask_t app_tcb;
-static TaskHandle_t app_task_handle = NULL;
-static int mmap = 0;
+static void *exp_mem_wrap_alloc = NULL;
+static uint32_t exp_mem_wrap_at = 0;
+static uint32_t exp_mem_size = 0;
 
-//static char mmaps[6];
-uint32_t app_stack_sz = 0; 
+//static volatile bool app_running = false;
+static TaskHandle_t app_selector_handle;
 
+static StaticTask_t app_tcb[EXP_MAX_ALLOW_THREADS];
+static TaskHandle_t app_task_handle[EXP_MAX_ALLOW_THREADS];
+
+static int exp_mmap_handle[EXP_MAX_ALLOW_MMAPS];
+static mmap_info exp_mmap_info[EXP_MAX_ALLOW_MMAPS];
+
+static int exp_self_mmap = 0;
+
+static uint8_t tid = 0; 
+
+uint32_t exp_main_thread_stack_sz = 0; 
+
+void pre_save_tcb(TaskHandle_t dest);
+void tcb_restore(TaskHandle_t ref, TaskHandle_t dest);
+
+
+static void clean_flist(file_list_t **flist)
+{
+    if(*flist)
+    {
+        file_list_t *c = *flist;
+        file_list_t *last = *flist;
+        while (c)
+        {
+            free(c->fname);
+            last = c;
+            c = c->next;
+            free(last);
+        } 
+        *flist = NULL;
+    }
+}
+
+void app_selector_start()
+{
+    if(!app_selector_handle)
+    { 
+        void app_selector(void *__);
+        xTaskCreate(app_selector, "app_selector", 440, NULL, configMAX_PRIORITIES - 4, &app_selector_handle);
+    }
+}
+
+void app_selector_stop()
+{
+    if(app_selector_handle)
+    {
+        vTaskDelete(app_selector_handle);
+        app_selector_handle = NULL;
+        clean_flist(&app_sel_flist);
+    }
+}
 
 bool app_is_running()
 {
-    return app_running;
+    for(int i = 0; i < EXP_MAX_ALLOW_THREADS; i++)
+    {
+        if(app_task_handle[i])
+            return true;
+    }
+    return false;
 }
 
 
 
 uint32_t app_get_ram_size()
 {
-    return app_mem_size;
+    return exp_mem_size;
 }
 
 
-static void app_main_thread(void *par) {
+static void exp_main_thread(void *par) {
 
     __asm volatile("mrs r1,cpsr_all");
     __asm volatile("bic r1,r1,#0x1f");
     __asm volatile("orr r1,r1,#0x10");
     __asm volatile("msr cpsr_all,r1"); 
-
-    __asm volatile("ldr r1,=%0" : : ""(APP_ROM_MAP_ADDR + 32) : );
-    __asm volatile("bx r1");
+ 
+    __asm volatile("blx r0");
 
     vTaskDelete(NULL);
     while (1) { 
@@ -49,126 +118,119 @@ static void app_main_thread(void *par) {
 }
 
 
-mmap_info mf;
+mmap_info expfile_mmap;
 
 void app_stop()
 {
     
-    if(!app_running)
+    if(!app_is_running())
         return;
     if(!app_task_handle)
         return;
 
     vTaskSuspendAll();
 
-    free((void *)mf.path);
+    free((void *)expfile_mmap.path);
 
-
-    vTaskDelete(app_task_handle);
-
-    void sls_unlock_all();
-    sls_unlock_all();
-    ll_set_app_mem_warp(0, 0);
-    free(app_mem_warp_alloc);
-    app_mem_warp_alloc = NULL;
-
-    app_running = false;
-    app_task_handle = NULL;
-
-    //for(int i = 0; i < sizeof(mmaps); i++)
-    //{
-    //    if(mmaps[i])
-    //        ll_mumap(mmaps[i]);
-    //    mmaps[i] = 0;
-    //}
-    ll_mumap(mmap);
-    for(int i = 1; i < 6; i++)
+    for(int i = 0; i < EXP_MAX_ALLOW_THREADS; i++)
     {
-        ll_mumap(i);
+        if(app_task_handle[i])
+        {
+            vTaskDelete(app_task_handle[i]);
+            app_task_handle[i] = NULL;
+        }
+    } 
+ 
+    ll_set_exp_mem_wrap(0, 0);
+    free(exp_mem_wrap_alloc);
+    exp_mem_wrap_alloc = NULL;
+ 
+    ll_mumap(exp_self_mmap);
+    for(int i = 0; i < EXP_MAX_ALLOW_MMAPS; i++)
+    {
+        if(exp_mmap_handle[i] > 0)
+        {
+            ll_mumap(exp_mmap_handle[i]);
+            exp_mmap_handle[i] = -1;
+        }
     }
 
-    for(uint32_t i = APP_RAM_MAP_ADDR; i < APP_RAM_MAP_ADDR + app_mem_size; i+=1024)
+    for(uint32_t i = APP_RAM_MAP_ADDR; i < APP_RAM_MAP_ADDR + exp_mem_size; i+=1024)
     {
         ll_mm_trim_vaddr(i & ~(1023));
     }
 
     xPortHeapTrimFreePage();
-    app_mem_size = 0;
-    xTaskResumeAll();
-    vTaskDelay(pdMS_TO_TICKS(50));
-}
+    exp_mem_size = 0;
 
-static volatile uint32_t rdVal = 0;
-static void app_rom_read(void *p)
-{
-    vTaskDelay(pdMS_TO_TICKS(100));
-    rdVal = ((uint32_t *)p)[0];
-    vTaskDelay(pdMS_TO_TICKS(100));
-    vTaskDelete(NULL);
+    memset(app_tcb, 0, sizeof(app_tcb));
+    memset(app_task_handle, 0, sizeof(app_task_handle));
+    memset(exp_mmap_handle, 0, sizeof(exp_mmap_handle));
+    memset(exp_mmap_info, 0, sizeof(exp_mmap_info));
+
+    xTaskResumeAll();
+    vTaskDelay(pdMS_TO_TICKS(50)); 
 }
+ 
 
 void app_start()
 {
-    if(app_running)
+    if(app_is_running())
     {
         return;
     }
-    if(mmap <= 0)
+    if(exp_self_mmap < 0)
     {
         return;
     }
+    tid = 0;
+    char tid_buf[16];
 
     bsp_diaplay_clean(0xFF); 
 
     uint32_t *stackSz = (uint32_t *)(APP_ROM_MAP_ADDR + 8);
-    //TaskHandle_t task_app_rom_read;
-    //xTaskCreate(app_rom_read, "app_rom_read", 32, stackSz, 2, &task_app_rom_read);
-    //vTaskDelay(pdMS_TO_TICKS(200));
-    //int i = 0;
-    //while (rdVal == 0)
-    //{
-    //    vTaskDelay(pdMS_TO_TICKS(500));
-    //    i++;
-    //    if(i > 10)
-    //    {
-    //        break;
-    //    }
-    //}
+ 
     if(*stackSz != 0xE1A00000)
     {
-        app_stack_sz = *stackSz;
-        printf("SET Stack Size:%ld\r\n", app_stack_sz );
+        exp_main_thread_stack_sz = *stackSz;
+        printf("SET Stack Size:%ld\r\n",  exp_main_thread_stack_sz );
     }
 
-    if(app_stack_sz == 0)
+    if(exp_main_thread_stack_sz == 0)
     {
-        app_stack_sz = 400;
+        exp_main_thread_stack_sz = 400;
     }
 
     vTaskSuspendAll();
-    uint32_t free_mem = getFreeMemSz() - 12*1024;
-    app_mem_warp_alloc = malloc(free_mem);
-    app_mem_warp_at = (uint32_t)app_mem_warp_alloc;
-    while((app_mem_warp_at % 1024))
-    {
-        app_mem_warp_at++;
-    }  
-    app_mem_size = (free_mem/1024) - 1;
-    ll_set_app_mem_warp(app_mem_warp_at, app_mem_size);
-    app_mem_size = app_mem_size * 1024;
 
-    printf("Allocate App Mem:%ld\r\n", app_mem_size);
-     app_task_handle = xTaskCreateStatic(
-         app_main_thread, 
-          "app_t0", 
-          app_stack_sz, 
-          NULL, 1,
-          (StackType_t *const)(APP_RAM_MAP_ADDR  + app_mem_size - app_stack_sz * 4 - 4) , &app_tcb); //APP_RAM_MAP_ADDR  + app_mem_size - 4 - app_stack_sz * 4
-    //xTaskCreate(app_main_thread, "app_t0", 400, NULL, 1, &app_task_handle);
+
+    uint32_t free_mem = getFreeMemSz() - 16*1024;
+    exp_mem_wrap_alloc = malloc(free_mem);
+    exp_mem_wrap_at = (uint32_t)exp_mem_wrap_alloc;
+    while((exp_mem_wrap_at % 1024))
+    {
+        exp_mem_wrap_at++;
+    }  
+    exp_mem_size = (free_mem/1024) - 1;
+    ll_set_exp_mem_wrap(exp_mem_wrap_at, exp_mem_size);
+    exp_mem_size = exp_mem_size * 1024;
     
-    gdb_attach_to_task(app_task_handle);
-    xTaskResumeAll();
-    app_running = true;
+    printf("Allocate App Mem:%ld\r\n", exp_mem_size);
+    
+    sprintf(tid_buf, "app_t%d", tid);
+    app_task_handle[tid] = xTaskCreateStatic(
+          exp_main_thread, 
+          tid_buf, 
+          exp_main_thread_stack_sz, 
+          (void *)(APP_ROM_MAP_ADDR + 32)
+          , 1,
+          (StackType_t *const)(APP_RAM_MAP_ADDR  + exp_mem_size - exp_main_thread_stack_sz * 4 - 4) , 
+          &app_tcb[tid]); //APP_RAM_MAP_ADDR  + exp_mem_size - 4 - app_stack_sz * 4
+    //xTaskCreate(app_main_thread, "app_t0", 400, NULL, 1, &app_task_handle);
+    tid++;
+
+    gdb_attach_to_task(app_task_handle[0]);
+    xTaskResumeAll(); 
 }
 
 
@@ -190,58 +252,93 @@ uint32_t app_get_exp_sz(char *path)
 
 void app_pre_start(char *path, bool sideload, uint32_t sideload_sz)
 {
-    
+    if(app_is_running())
+        return;
+
+
     app_stop();
-    
-    mf.map_to = APP_ROM_MAP_ADDR;
-    mf.offset = 0;
-    mf.writable = false;
-    mf.writeback = false;
-    if(sideload)
+
+
+    expfile_mmap.map_to = APP_ROM_MAP_ADDR;
+    expfile_mmap.offset = 0;
+    expfile_mmap.writable = false;
+    expfile_mmap.writeback = false;
+    //if(sideload)
+    //{
+    //    mf.size = sideload_sz;
+    //    mf.path = calloc(1, 3);
+    //    memcpy((void *)mf.path,(void *)"\03",1);
+    //}else
     {
-        mf.size = sideload_sz;
-        mf.path = calloc(1, 3);
-        memcpy((void *)mf.path,(void *)"\03",1);
-    }else{
-        mf.path = calloc(1, 64);
-        strncpy((char *)mf.path, path, 63);
+        expfile_mmap.path = calloc(1, 64);
+        strncpy((char *)expfile_mmap.path, path, 63);
         uint32_t expSz = app_get_exp_sz(path);
         //int32_t remainSz = expSz;
         printf("app rom sz:%d\r\n", expSz);
-        mf.size = 0;
-        //mmaps[0] = ll_mmap(&mf);
-        mmap = ll_mmap(&mf);
-        printf("A mmap:%d, off:%08lX,sz:%ld,  %s\r\n", mmap, mf.offset, mf.size,  mf.path);
-        //for(int i = 0; i <= expSz / 1048576; i++)
-        //{
-        //    mf.map_to = APP_ROM_MAP_ADDR + i * 1048576;
-        //    mf.offset = i * 1048576;
-        //    mf.size = 1048576;
-        //    remainSz -= mf.size;
-        //    mmaps[i] = ll_mmap(&mf);
-        //    printf("A mmap:%d, off:%08lX,sz:%ld,  %s\r\n", mmaps[i],mf.offset,mf.size,  mf.path);
-        //    if((i == 1) || ((remainSz < 1048576) && (remainSz > 0)))
-        //    {
-        //        i++;
-        //        mf.map_to = APP_ROM_MAP_ADDR + i * 1048576;
-        //        mf.offset = i * 1048576;
-        //        mf.size = 1048576;
-        //        mf.size = remainSz;
-        //        mmaps[i] = ll_mmap(&mf);
-        //        printf("B mmap:%d, off:%08lX,sz:%ld,  %s\r\n", mmaps[i],mf.offset,mf.size,  mf.path);
-        //        break;
-        //    }
-        //}
-
-        
+        expfile_mmap.size = 0;
+        //mmaps[0] = ll_mmap(&expfile_mmap);
+        exp_self_mmap = ll_mmap(&expfile_mmap);
+        printf("A mmap:%d, off:%08lX,sz:%ld,  %s\r\n", exp_self_mmap, expfile_mmap.offset, expfile_mmap.size,  expfile_mmap.path);       
     }
 
-    //mmap = ll_mmap(&mf);
+    //mmap = ll_mmap(&expfile_mmap);
     
 }
  
+static char *get_name_from_path(char *path)
+{
+    
+    uint32_t i = strlen(path) - 1;
+    while ((path[i] != '/') && i)
+    {
+        i--;
+    }
+    i++;
+    return &path[i];
+}
+
+int _ON_LongPress = 0;
+#include <assert.h>
+
+static int get_save_id(char *expName)
+{ 
+
+    fs_dir_obj_t dir;
+    int id = 0;
+    char *search_name = calloc(1,128);
+    dir = calloc(1, ll_fs_get_dirobj_sz());
+    if(!dir)
+    {
+        printf("Calloc ERR\r\n");
+    }
+    int ret = ll_fs_dir_open(dir, STATE_SAVE_DIR);
+    if(ret < 0)
+    {
+        free(dir);
+        free(search_name);
+        return -1;
+    }
+        
+search:
+    sprintf(search_name, "%s.%d.sav",expName, id);
+    while(ll_fs_dir_read(dir) > 0)
+    {
+        //printf("cmp:%s == %s\r\n", search_name,ll_fs_dir_cur_item_name(dir) );
+        if(!strcmp(search_name, ll_fs_dir_cur_item_name(dir)))
+        {
+            id++;
+            ll_fs_dir_rewind(dir);
+            goto search;
+        }
+    }
+
+    ll_fs_dir_close(dir);
 
 
+    free(dir);
+    free(search_name);
+    return id;
+}
 
 void app_api_task(void *p)
 { 
@@ -255,30 +352,184 @@ void app_api_task(void *p)
             {
                 case LLAPI_APP_DELAY_MS:
                     vOtherTaskDelay(info.task, pdMS_TO_TICKS(info.par0));
+                    break; 
+                
+                case LLAPI_MMAP:
+                    for(int i = 0; i < EXP_MAX_ALLOW_MMAPS; i++)
+                    {
+                        if(exp_mmap_handle[i] == 0)
+                        {
+                            if(ll_vaddr_vaild(info.par0))
+                            {
+                                int ret = ll_mmap((mmap_info *)info.par0);
+                                if(ret > 0)
+                                {
+                                    memcpy(&exp_mmap_info[i], (mmap_info *)info.par0, sizeof(mmap_info));
+                                    exp_mmap_handle[i] = ret;
+                                    break;
+                                }else{
+                                    printf("mmap error:%d\r\n",ret);
+                                    info.context[0] = -1;
+                                }
+                            }else{
+                                printf("mmap error: invalid mf addr %08X\r\n",info.par0);
+                                info.context[0] = -1;
+                            }
+                        }
+                    }
                     break;
-                case LLAPI_APP_GET_KEY:
-                    vTaskSuspend(info.task);
+                case LLAPI_MUNMAP:
+                    if(info.par0 < EXP_MAX_ALLOW_MMAPS)
+                    {
+                        if(exp_mmap_handle[info.par0] > 0)
+                            ll_mumap(exp_mmap_handle[info.par0]);
+                            exp_mmap_handle[info.par0] = -1;
+                            memset(&exp_mmap_info[info.par0], 0, sizeof(mmap_info));
+                    }
                     break;
 
             default:
                 break;
             }
         }
+
+        if(bsp_is_key_down(KEY_ON) && bsp_is_key_down(KEY_F5))
+        {
+            if(app_is_running())
+            {
+                printf("Save state\r\n");
+                _ON_LongPress = 0; 
+
+                vTaskSuspendAll();
+                char *exp_name = get_name_from_path((char *)expfile_mmap.path);
+                int saveid = get_save_id(exp_name);
+                char *save_path = calloc(1,128);
+                sprintf(save_path, STATE_SAVE_DIR "/%s.%d.sav",exp_name, saveid );
+                
+                fs_obj_t f = calloc(1, ll_fs_get_fobj_sz());
+                assert(f);
+                int ret = ll_fs_open(f, save_path , O_CREAT | O_WRONLY | O_TRUNC);
+                if(ret < 0)
+                {
+                    printf("save err:%d\r\n",ret);
+                }
+                uint8_t wr_u8;
+                uint32_t tcb_floc;
+                uint32_t mmapinfo_floc;
+                uint32_t mmapfpath_floc;
+                uint32_t mem_floc;
+                uint32_t scr_floc;
+                uint32_t mem_bitmap_floc;
+
+                ll_fs_write(f, "EXPSAVE", 7);
+
+                wr_u8 = 0;
+                ll_fs_seek(f, 16*4, SEEK_SET);
+                ll_fs_write(f, (void *)expfile_mmap.path, strlen(expfile_mmap.path));
+                ll_fs_write(f, &wr_u8, 1);
+
+                tcb_floc = ll_fs_tell(f);
+                ll_fs_write(f, &tid, 1);
+                for(int i = 0; i < tid; i++)
+                {
+                    if(app_task_handle[i])
+                    {
+                        pre_save_tcb(app_task_handle[i]);
+                        ll_fs_write(f, &app_tcb[i], sizeof(StaticTask_t));
+                    }
+                }
+                
+                mmapinfo_floc = ll_fs_tell(f);
+                
+                char *mf_path_buf = calloc(1, 128);
+                assert(mf_path_buf);
+
+                wr_u8 = EXP_MAX_ALLOW_MMAPS;
+                ll_fs_write(f, &wr_u8, 1);
+                for(int i = 0; i < EXP_MAX_ALLOW_MMAPS; i++)
+                {
+                    ll_fs_write(f, &exp_mmap_info[i], sizeof(mmap_info));
+                    if(exp_mmap_info[i].path)
+                    { 
+                        strcpy(mf_path_buf, exp_mmap_info[i].path);
+                        ll_fs_write(f, mf_path_buf, 128);
+                    }else{
+                        ll_fs_seek(f, 128, SEEK_CUR);
+                    }
+                }
+                
+                free(mf_path_buf);
+
+                mem_floc = ll_fs_tell(f);
+                ll_fs_write(f, &exp_mem_size, 4);
+                ll_fs_write(f, (void *)APP_RAM_MAP_ADDR, exp_mem_size);
+                
+
+
+                scr_floc = ll_fs_tell(f);
+                char *linebuf = calloc(1, 256);
+                assert(linebuf);
+
+                for(int y = 0; y < 127; y++)
+                {
+                    for(int x = 0; x < 256; x++)
+                    {
+                        linebuf[x] = bsp_display_get_point(x,y);
+                    }
+                    ll_fs_write(f, linebuf, 256);
+                }
+
+                mem_bitmap_floc = ll_fs_tell(f);
+                for(int i = APP_RAM_MAP_ADDR; i < APP_RAM_MAP_ADDR + exp_mem_size; i+=1024)
+                {
+                    wr_u8 = ll_vaddr_dirty(i);
+                    ll_fs_write(f, &wr_u8, 1);
+                }
+
+
+                ll_fs_seek(f, 8, SEEK_SET);
+                ll_fs_write(f, &tcb_floc, 4);
+                ll_fs_write(f, &mmapinfo_floc, 4);
+                ll_fs_write(f, &mem_floc, 4);
+                ll_fs_write(f, &scr_floc, 4);
+                ll_fs_write(f, &mem_bitmap_floc, 4);
+ 
+                ll_fs_close(f);
+
+                free(linebuf);
+                free(f);
+                free(save_path);
+
+                app_stop();
+                
+                xTaskResumeAll();
+ 
+                app_selector_start();
+            } 
+        }
+        if((_ON_LongPress == 30) && bsp_is_key_down(KEY_ON))
+        {
+            if(app_is_running())
+            {
+                _ON_LongPress = 0;
+                app_stop();
+                app_selector_start();
+            }
+        }
+        if(bsp_is_key_down(KEY_ON))
+        {
+            _ON_LongPress++;
+        }else{
+            _ON_LongPress = 0;
+        }
     }
 }
 
 
-
+void clear_key_queue();
 
 //==============================
 
-typedef struct file_list_t
-{
-    struct file_list_t *next;
-    char *fname;
-    int type;
-    uint32_t size;
-}file_list_t;
 
 static void disp_puts(int x, int y, const char *s, int inv)
 {
@@ -290,23 +541,6 @@ static void bar_puts(int x, int y, const char *s, int inv)
 }
  
 #define IKD(k)  bsp_is_key_down(k)
-
-static void clean_flist(file_list_t **flist)
-{
-    if(*flist)
-    {
-        file_list_t *c = *flist;
-        file_list_t *last = *flist;
-        while (c)
-        {
-            free(c->fname);
-            last = c;
-            c = c->next;
-            free(last);
-        } 
-        *flist = NULL;
-    }
-}
 
 static uint32_t read_dir(file_list_t **flist, char *path)
 {
@@ -345,7 +579,7 @@ static uint32_t read_dir(file_list_t **flist, char *path)
     ll_fs_dir_close(dirobj);
     free(dirobj);
     return items;
-}
+} 
 
 
 static void draw_main(file_list_t *flist, char *path, int select)
@@ -433,8 +667,140 @@ static void up_dir(char *path)
             i--;
         }
     }
-}
+} 
 
+static void load_sav(char *sav_path)
+{
+    
+    printf("restore sav\r\n");
+    tid = 0;
+    char *org_path = calloc(1,128);
+    fs_obj_t f = calloc(2, ll_fs_get_fobj_sz());
+    StaticTask_t *tmp_ref_tcb = calloc(1, sizeof(StaticTask_t));
+    assert(f);
+    assert(tmp_ref_tcb);
+    assert(org_path);
+
+    ll_fs_open(f, sav_path, O_RDONLY);
+
+    ll_fs_read(f, org_path, 8);
+    if(!strcmp(org_path, "EXPSAVE"))
+    {
+        uint32_t tcb_floc, mmapinfo_floc, mem_floc, scr_floc, mem_bitmap_floc;
+        uint32_t tmp_stack[4];
+
+        vTaskSuspendAll();
+
+        ll_fs_seek(f, 16*4, SEEK_SET);
+        ll_fs_read(f, org_path, 128);
+
+        expfile_mmap.map_to = APP_ROM_MAP_ADDR;
+        expfile_mmap.offset = 0;
+        expfile_mmap.writable = false;
+        expfile_mmap.writeback = false;
+        expfile_mmap.path = org_path;
+        exp_self_mmap = ll_mmap(&expfile_mmap);
+
+        ll_fs_seek(f, 8, SEEK_SET);
+        ll_fs_read(f, &tcb_floc, 4);
+        ll_fs_read(f, &mmapinfo_floc, 4);
+        ll_fs_read(f, &mem_floc, 4);
+        ll_fs_read(f, &scr_floc, 4);
+        ll_fs_read(f, &mem_bitmap_floc, 4);
+
+        printf("tcb_floc:%ld\r\n", tcb_floc);
+        printf("mmapinfo_floc:%ld\r\n", mmapinfo_floc);
+        printf("mem_floc:%ld\r\n", mem_floc);
+        printf("scr_floc:%ld\r\n", scr_floc);
+
+        uint8_t u8_rd = 0;
+        ll_fs_seek(f, tcb_floc, SEEK_SET);
+        ll_fs_read(f, &u8_rd, 1);
+        for(int i = 0; i < u8_rd; i++)
+        {
+            ll_fs_read(f, tmp_ref_tcb, sizeof(StaticTask_t));
+            if(((uint32_t *)tmp_ref_tcb)[0])
+            {
+                app_task_handle[tid] = xTaskCreateStatic(NULL, "NULL", 2, NULL, 1, tmp_stack, &app_tcb[tid]);
+                tcb_restore((TaskHandle_t)tmp_ref_tcb, app_task_handle[tid]);
+                tid++;
+            }
+        }
+
+        ll_fs_seek(f, mmapinfo_floc, SEEK_SET);
+        ll_fs_read(f, &u8_rd, 1);
+        for(int i = 0; i < u8_rd; i++)
+        {
+            ll_fs_read(f, &exp_mmap_info[i], sizeof(mmap_info));
+            if(exp_mmap_info[i].path)
+            {
+                exp_mmap_info[i].path = calloc(1, 128);
+                assert(exp_mmap_info[i].path);
+
+                ll_fs_read(f, (void *)exp_mmap_info[i].path, 127);
+                
+                exp_mmap_handle[i] = ll_mmap(&exp_mmap_info[i]);
+            }else{
+                ll_fs_seek(f, 128, SEEK_CUR);
+            }
+        }
+ 
+        ll_fs_seek(f, scr_floc, SEEK_SET);
+        char *linebuf = calloc(1, 256);
+        assert(linebuf);
+
+        for(int y = 0; y < 127; y++)
+        {
+            ll_fs_read(f, linebuf, 256);
+            bsp_diaplay_put_hline(y, linebuf);
+        }
+
+        free(linebuf);
+
+        uint32_t memsz = 0;
+        ll_fs_seek(f, mem_floc, SEEK_SET);
+        ll_fs_read(f, &memsz, 4);
+
+        printf("Restore mem sz:%08lX\r\n", memsz);
+
+        exp_mem_wrap_alloc = malloc(memsz + 2*1024);
+        assert(exp_mem_wrap_alloc);
+        exp_mem_wrap_at = (uint32_t)exp_mem_wrap_alloc;
+        while((exp_mem_wrap_at % 1024))
+        {
+            exp_mem_wrap_at++;
+        }  
+        exp_mem_size = (memsz/1024);
+        ll_set_exp_mem_wrap(exp_mem_wrap_at, exp_mem_size);
+        exp_mem_size = exp_mem_size * 1024;
+
+        printf("Reload allocate App Mem:%ld\r\n", exp_mem_size);
+
+
+        for(int i = 0; i < memsz / 1024; i++)
+        {
+            ll_fs_seek(f, mem_bitmap_floc + i, SEEK_SET);
+            ll_fs_read(f, &u8_rd, 1);
+            if(u8_rd)
+            {
+                ll_fs_seek(f, mem_floc + 4 + (i * 1024), SEEK_SET);
+                ll_fs_read(f, (void *)(APP_RAM_MAP_ADDR + i*1024), 1024);
+            }
+        }
+        //ll_fs_read(f, (void *)APP_RAM_MAP_ADDR, memsz);
+
+
+        xTaskResumeAll();
+    }else{
+        free(org_path);
+    }
+
+
+    ll_fs_close(f);
+    free(f);
+    free(tmp_ref_tcb);
+
+}
 
 void app_selector(void *__)
 {
@@ -443,13 +809,11 @@ void app_selector(void *__)
     char cwd[256]; 
     char select_path[256];
 
-    file_list_t *flist = NULL;
-
     strcpy(cwd, "/");
 
-    items = read_dir(&flist, cwd);
+    items = read_dir(&app_sel_flist, cwd);
     
-    draw_main(flist, cwd, sel);
+    draw_main(app_sel_flist, cwd, sel);
      
     while (1)
     {
@@ -457,13 +821,13 @@ void app_selector(void *__)
         { 
             if(sel < items - 1)
                 sel++;
-            draw_main(flist, cwd, sel);
+            draw_main(app_sel_flist, cwd, sel);
         }
         else if(IKD(KEY_UP))
         {  
             if(sel)
                 sel--;
-            draw_main(flist, cwd, sel);
+            draw_main(app_sel_flist, cwd, sel);
         }else if(IKD(KEY_F4))
         {  
             sel += 6;
@@ -471,70 +835,96 @@ void app_selector(void *__)
             {
                 sel = items - 1;
             }
-            draw_main(flist, cwd, sel);
+            draw_main(app_sel_flist, cwd, sel);
         }else if(IKD(KEY_F3))
         {  
             sel -= 6;
             if(sel < 0)
                 sel = 0;
-            draw_main(flist, cwd, sel);
+            draw_main(app_sel_flist, cwd, sel);
         } else if(IKD(KEY_ENTER) || IKD(KEY_F1))
         {
-            if(get_select_type(flist, sel) == FS_FILE_TYPE_DIR)
+            if(get_select_type(app_sel_flist, sel) == FS_FILE_TYPE_DIR)
             {
-                if(!strcmp(get_select_name(flist,sel), "."))continue;
-                else if(!strcmp(get_select_name(flist,sel), ".."))up_dir(cwd);
+                if(!strcmp(get_select_name(app_sel_flist,sel), "."))continue;
+                else if(!strcmp(get_select_name(app_sel_flist,sel), ".."))up_dir(cwd);
                 else{
                     if(cwd[strlen(cwd) - 1] != '/')
                     {
                         strcat(cwd, "/"); 
                     }
-                    strcat(cwd, get_select_name(flist,sel)); 
+                    strcat(cwd, get_select_name(app_sel_flist,sel)); 
                 }
                 printf("cwd:%s\r\n", cwd);
-                items = read_dir(&flist, cwd);
+                items = read_dir(&app_sel_flist, cwd);
                 sel = 0;
-                draw_main(flist, cwd, sel);
-            }else if(get_select_type(flist, sel) == FS_FILE_TYPE_REG) {
+                draw_main(app_sel_flist, cwd, sel);
+            }else if(get_select_type(app_sel_flist, sel) == FS_FILE_TYPE_REG) {
                 strcpy(select_path, cwd);
                 if(select_path[strlen(select_path) - 1] != '/')
                 {
                     strcat(select_path, "/"); 
                 }
-                strcat(select_path, get_select_name(flist,sel));
+                strcat(select_path, get_select_name(app_sel_flist,sel));
                 printf("sel:%S\r\n", select_path);
                 printf("typ:%s\r\n", get_ext_name(select_path));
                 
                 if(!strcmp(get_ext_name(select_path), ".exp"))
                 {
-                    clean_flist(&flist);
+                    clear_key_queue();
                     app_stop();
                     app_pre_start(select_path, false, 0);
                     app_start();
-
+                    clean_flist(&app_sel_flist);
+                    app_selector_handle = NULL;
+                    vTaskDelete(NULL);
+                } else if(!strcmp(get_ext_name(select_path), ".sav"))
+                {
+                    clear_key_queue();
+                    load_sav(select_path);
+                    clean_flist(&app_sel_flist);
+                    app_selector_handle = NULL;
                     vTaskDelete(NULL);
                 }
+
+                //if(!strcmp(get_select_name(app_sel_flist, sel), "test.txt"))
+                //{
+                //    fs_obj_t f = malloc(ll_fs_get_fobj_sz());
+                //    int ret = ll_fs_open(f, select_path, O_RDWR | O_TRUNC);
+                //    printf("test op:%d\r\n", ret);
+                //    ll_fs_write(f, "Hello Test 12345", sizeof("Hello Test 12345"));
+                //    ll_fs_close(f);
+                //    free(f);
+                //}
             }
 
         }else if(IKD(KEY_F6))
         {
             up_dir(cwd);
             printf("cwd:%s\r\n", cwd);
-            items = read_dir(&flist, cwd);
+            items = read_dir(&app_sel_flist, cwd);
             sel = 0;
-            draw_main(flist, cwd, sel);
+            draw_main(app_sel_flist, cwd, sel);
         }
         vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
 //==============================
  
-
 void app_api_init()
 { 
+    ll_fs_dir_mkdir(STATE_SAVE_DIR);
+
+    memset(app_tcb, 0, sizeof(app_tcb));
+    memset(app_task_handle, 0, sizeof(app_task_handle));
+    memset(exp_mmap_handle, 0, sizeof(exp_mmap_handle));
+    memset(exp_mmap_info, 0, sizeof(exp_mmap_info));
+     
     app_api_queue = xQueueCreate(10, sizeof(app_api_info_t));
-    xTaskCreate(app_api_task, "LLAPI Srv", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 3, NULL);
-    xTaskCreate(app_selector, "app_selector", 400, NULL, configMAX_PRIORITIES - 4, NULL);
+    xTaskCreate(app_api_task, "LLAPI Srv", 400, NULL, configMAX_PRIORITIES - 3, NULL); 
+
+    app_selector_start();
+
 }
 
 

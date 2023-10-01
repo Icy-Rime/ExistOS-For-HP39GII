@@ -75,6 +75,7 @@ void bsp_diaplay_clean(uint32_t c);
 void bsp_display_set_point(uint32_t x, uint32_t y, uint32_t c);
 uint32_t bsp_display_get_point(uint32_t x, uint32_t y);
 void bsp_diaplay_put_hline(uint32_t y, void *dat);
+void bsp_diaplay_put_hline_len(uint32_t y, void *dat, uint32_t len);
 void bsp_display_flush();
 
 void bsp_reset();

@@ -210,7 +210,7 @@ uint32_t get_rom_sz()
         free(f);
         return 0;
     }
-    sz = ll_fs_size(f);
+    sz = llapi_fs_size(f);
     llapi_fs_close(f);
     free(f);
     return sz;

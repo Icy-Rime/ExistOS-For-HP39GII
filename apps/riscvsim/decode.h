@@ -5,8 +5,8 @@
 #include <string.h>
 #include <stdint.h>
 
-#define MAX_DECODE_BLOCKS ((1 << 5) - 1)
-#define INS_PER_DB (16)
+#define MAX_DECODE_BLOCKS ((1 << 10) - 1)
+//#define INS_PER_DB (16)
 
 #define ENABLE_RV32C (1)
 
@@ -124,7 +124,7 @@ typedef struct DecodeBlock
     uint32_t IR_Length;
     uint32_t exec_cnt;
     uint32_t src_ins_len;
-    IRCode Ins[INS_PER_DB];
+    IRCode *Ins;
 } DecodeBlock;
 
 int GetCachedDBByAddr(uint32_t src_pc, DecodeBlock **DB, uint32_t *offset);

@@ -665,7 +665,7 @@ void simulatorStart(uint32_t pc)
     // DecodeSrc(0);
     while (run)
     {
-#if !(defined(_WIN64) || defined(_WIN32))
+#if !(defined(_WIN64) || defined(_WIN32)) && 0
         static uint32_t tm1 = 0;
         if ((llapi_get_tick_ms() - tm1) > 1000)
         {
@@ -706,15 +706,16 @@ void simulatorStart(uint32_t pc)
                 if ((pc >= DB->src_pc) && (pc < DB->src_pc + DB->src_codes_length))
                 {
                     offset = pc - DB->src_pc;
-                    loop_cnt++;
-                    if (loop_cnt > 1000000)
-                    {
-                        inloop = 0;
-                    }
-                    else
-                    {
-                        inloop = 1;
-                    }
+                    inloop = 1;
+                    //loop_cnt++;
+                    //if (loop_cnt > 1000000)
+                    //{
+                    //    inloop = 0;
+                    //}
+                    //else
+                    //{
+                    //    inloop = 1;
+                    //}
                 }
                 else
                 {

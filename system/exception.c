@@ -137,13 +137,29 @@ void __attribute__((naked)) __attribute__((target("arm"))) sys_svc()
             info.task = (TaskHandle_t)pxCurrentTCB;
             info.code = swi_code;
             info.par0 = pRegFram[0 + 2];
+            info.context = &pRegFram[0 + 2];
             xQueueSendFromISR(app_api_queue, &info, &ShouldYield);
             if(ShouldYield)
             {
                 vTaskSwitchContext(); 
             }
         }
-        //app_thread_delay_ms(pRegFram[0 + 2]);
+        break;
+    case LLAPI_MMAP:
+    case LLAPI_MUNMAP:
+        {
+            app_api_info_t info;
+            uint32_t ShouldYield = 0;
+            info.task = (TaskHandle_t)pxCurrentTCB;
+            info.code = swi_code;
+            info.par0 = pRegFram[0 + 2];
+            info.context = &pRegFram[0 + 2];
+            xQueueSendFromISR(app_api_queue, &info, &ShouldYield);
+            if(ShouldYield)
+            {
+                vTaskSwitchContext(); 
+            }
+        }
         break;
     case LLAPI_APP_STDOUT_PUTC:
         putchar(pRegFram[0 + 2]);
@@ -163,6 +179,9 @@ void __attribute__((naked)) __attribute__((target("arm"))) sys_svc()
     case LLAPI_APP_RTC_SET_S:
         bsp_rtc_set_s(pRegFram[0 + 2]);
         break;
+    case LLAPI_APP_DISP_CLEAN:
+        bsp_diaplay_clean(pRegFram[0 + 2]);
+        break;
     case LLAPI_APP_DISP_PUT_P:
         //printf("SET: %ld,%ld,%ld\r\n",  pRegFram[0 + 2], pRegFram[1 + 2], pRegFram[2 + 2] );
         bsp_display_set_point(pRegFram[0 + 2], pRegFram[1 + 2], pRegFram[2 + 2]);
@@ -173,21 +192,24 @@ void __attribute__((naked)) __attribute__((target("arm"))) sys_svc()
     case LLAPI_APP_DISP_PUT_HLINE:
         bsp_diaplay_put_hline(pRegFram[0 + 2], (void *)pRegFram[1 + 2]);
         break;
+    case LLAPI_APP_DISP_PUT_HLINE_LEN:
+        bsp_diaplay_put_hline_len(pRegFram[0 + 2], (void *)pRegFram[1 + 2], pRegFram[2 + 2] );
+        break;
+    case LLAPI_APP_DISP_PUT_KSTRING:
+        {
+            uint32_t x =  pRegFram[0 + 2];
+            uint32_t y =  pRegFram[1 + 2];
+            char *s = (char *)pRegFram[2 + 2];
+            uint16_t fg = pRegFram[3 + 2] >> 16;
+            uint16_t bg = pRegFram[3 + 2] & 0xFFFF;
+            bsp_display_putk_string(x, y, s, fg, bg);
+        }
+        break;
     case LLAPI_APP_QUERY_KEY:
         pRegFram[0 + 2] = sys_query_key();
         break;
-    case LLAPI_APP_GET_KEY:
-        {
-            app_api_info_t info;
-            uint32_t ShouldYield = 0;
-            info.task = (TaskHandle_t)pxCurrentTCB;
-            info.code = swi_code;
-            xQueueSendFromISR(app_api_queue, &info, &ShouldYield);
-            if(ShouldYield)
-            {
-                vTaskSwitchContext(); 
-            }
-        }
+    case LLAPI_APP_IS_KEY_DOWN: 
+        pRegFram[0 + 2] = bsp_is_key_down(pRegFram[0 + 2]); 
         break;
     case 0x55:
         vTaskSwitchContext(); 

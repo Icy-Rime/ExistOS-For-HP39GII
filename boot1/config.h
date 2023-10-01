@@ -13,10 +13,13 @@ extern int page_frame_size;
 #define PGT_ITEMS               (PGT_SIZE / 4)  //TINY PAGE
 #define PAGES_PER_SECTION       (1048576/PAGE_SIZE) //TINY PAGE
 
-#define MAX_RESERVE_FILE_PAGES  (0)
+//#define MAX_RESERVE_FILE_PAGES  (0)
 
 #define PAGE_FRAMES                 ((uint32_t)&page_frame_size / PAGE_SIZE)
-#define MAX_ALLOW_MMAP_FILE         (((uint32_t)&pgt_size / PGT_SIZE) - 1)
+#define PGT_NUM_FOR_MMAP            ((((uint32_t)&pgt_size / PGT_SIZE) - 1))
+//#define MAX_ALLOW_MMAP_FILE         (((uint32_t)&pgt_size / PGT_SIZE) - 1)
+#define MAX_NUM_MMAP    (5)
+
 
 #define BOOT1_HEAD_LOAD_ADDR     (0xD0001000)
 #define BOOT1_BODY_OFFSET   (0x50)

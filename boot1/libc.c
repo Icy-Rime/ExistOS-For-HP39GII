@@ -12,12 +12,37 @@
 #include "xformatc.h"
 #include "utils.h"
 
+char boot1_log_buf1[1024];
+uint16_t boot1_log_buf1_wr_ptr = 0;
+uint16_t boot1_log_buf1_rd_ptr = 0;
+
+
+uint8_t boot1_log_get_ch()
+{
+  uint8_t c;
+  if(boot1_log_buf1_rd_ptr == boot1_log_buf1_wr_ptr)
+  {
+    return 0;
+  }
+  c = boot1_log_buf1[boot1_log_buf1_rd_ptr++];
+  if(boot1_log_buf1_rd_ptr >= sizeof(boot1_log_buf1))
+  {
+    boot1_log_buf1_rd_ptr = 0;
+  }
+  return c;
+}
+
 static char buf1[64];
 static void myPutchar(void *arg,char c)
 {
     char ** s = (char **)arg;
     *(*s)++ = c;
     print_putc(c);
+    boot1_log_buf1[boot1_log_buf1_wr_ptr++] = c;
+    if(boot1_log_buf1_wr_ptr >= sizeof(boot1_log_buf1))
+    {
+      boot1_log_buf1_wr_ptr = 0;
+    }
 }
 
 static void myPrintf(char *buf,const char *fmt,va_list args)

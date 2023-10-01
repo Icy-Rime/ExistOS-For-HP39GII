@@ -22,7 +22,7 @@
 
 typedef struct page_frame_attr_t {
     uint32_t map_addrs;
-    unsigned mmap_socket : 4;
+    unsigned mmap_slot : 4;
     unsigned dirty : 1;
     unsigned writeback : 1; 
     unsigned for_side_load : 1;
@@ -33,7 +33,8 @@ typedef struct page_frame_attr_t {
 volatile uint32_t side_load_pending_off = -1;
 volatile uint32_t side_load_pending_paddr = 0;
 
-mmap_table_t *mmap_socket;
+//mmap_table_t *mmap_slot;
+mmap_table_t mmap_slot[MAX_NUM_MMAP];
 page_frame_attr_t *page_frame_attr;
 int page_frame_ptr = 0;
 
@@ -49,7 +50,7 @@ uint32_t *l2pgt_mapaddr;
 int mmaps = 0;
 uint32_t memory_max;
 
-uint32_t app_mem_warped_at = MAIN_MEMORY_BASE;
+uint32_t app_mem_wraped_at = MAIN_MEMORY_BASE;
 uint32_t app_memory_max = 0;
 
 l1_fine_page_desc_t *L1PGT = (l1_fine_page_desc_t *)0x800C0000;
@@ -105,17 +106,18 @@ void mm_init() {
     
     //mmu_invalidate_dcache_all();
     
-    memory_max = ((uint32_t)&page_frame_size) - (MAX_RESERVE_FILE_PAGES * PAGE_SIZE);
+    memory_max = ((uint32_t)&page_frame_size);
     printf("memory max:%08lx\r\n", memory_max);
     printf("PAGE_FRAMES:%08lx\r\n", PAGE_FRAMES);
-    l2pgt_mapaddr = calloc(MAX_ALLOW_MMAP_FILE + 1, sizeof(uint32_t));
+    l2pgt_mapaddr = calloc(MAX_NUM_MMAP + 1, sizeof(uint32_t));
     for (int i = 3; i < 8; i++) {
         SetMPTELoc(i, 0xEF3 + i);
         L1PGT[0xEF3 + i].type = SECTION_TYPE_FALSE;
     }
-    mmap_socket = calloc(1, sizeof(mmap_table_t) * MAX_ALLOW_MMAP_FILE);
+    //mmap_slot = calloc(1, sizeof(mmap_table_t) * MAX_ALLOW_MMAP_FILE);
+    memset(mmap_slot, 0, sizeof(mmap_slot));
     page_frame_attr = calloc(1, sizeof(page_frame_attr_t) * PAGE_FRAMES);
-    if ((!mmap_socket) || (!page_frame_attr)) {
+    if ((!page_frame_attr)) {
         printf("mm_init ERROR\r\n");
         return;
     }
@@ -127,7 +129,7 @@ void mm_init() {
         page_frame_attr[i].lock = 0;
         page_frame_attr[i].writeback = 0;
         page_frame_attr[i].map_addrs = 0; 
-        page_frame_attr[i].mmap_socket = -1;
+        page_frame_attr[i].mmap_slot = -1;
     }
 
     //l2_tiny_page_desc_t *cur_pgt = (l2_tiny_page_desc_t *)&pgt[PGT_BOOT1_MEM * PGT_ITEMS];
@@ -159,7 +161,7 @@ void munmap(uint32_t i)
 {
     INFO("c munmap:%ld\r\n", i);
 
-    if (i >= MAX_ALLOW_MMAP_FILE) {
+    if (i >= MAX_NUM_MMAP) {
         
         INFO("c munmap ERR:%ld\r\n", i);
         return;
@@ -172,7 +174,7 @@ void munmap(uint32_t i)
 
     for(int j = 0; j< PAGE_FRAMES; j++)
     {
-        if(page_frame_attr[j].mmap_socket == i)
+        if(page_frame_attr[j].mmap_slot == i)
         {
             
             //mmu_invalidate_icache();
@@ -191,35 +193,35 @@ void munmap(uint32_t i)
         }
     }
 
-    if (mmap_socket[i].path) {
-        if(mmap_socket[i].path[0] != 3)
+    if (mmap_slot[i].path) {
+        if(mmap_slot[i].path[0] != 3)
         {
 
             
-            lfs_file_close(&lfs, mmap_socket[i].f);
-            free(mmap_socket[i].f);
+            lfs_file_close(&lfs, mmap_slot[i].f);
+            free(mmap_slot[i].f);
 
-            for (int k = 0; k < MAX_ALLOW_MMAP_FILE; k++) { 
-                if((mmap_socket[k].path) && (k != i))
-                    if(memcmp(mmap_socket[k].path, mmap_socket[i].path, strlen(mmap_socket[k].path)) == 0)
+            for (int k = 0; k < MAX_NUM_MMAP; k++) { 
+                if((mmap_slot[k].path) && (k != i))
+                    if(memcmp(mmap_slot[k].path, mmap_slot[i].path, strlen(mmap_slot[k].path)) == 0)
                     {
-                        mmap_socket[k].path = NULL;
-                        mmap_socket[k].f = NULL;
+                        mmap_slot[k].path = NULL;
+                        mmap_slot[k].f = NULL;
                         printf("munmap same file:%ld %d\r\n", i, k);
                     }
             }
 
         }
-        free(mmap_socket[i].path);
+        free(mmap_slot[i].path);
     
-        mmap_socket[i].path = NULL;
-        mmap_socket[i].f = NULL;
+        mmap_slot[i].path = NULL;
+        mmap_slot[i].f = NULL;
  
         mmu_invalidate_icache();
-        mmu_invalidate_dcache((void *)mmap_socket[i].map_to_address, mmap_socket[i].size);
+        mmu_invalidate_dcache((void *)mmap_slot[i].map_to_address, mmap_slot[i].size);
         mmu_invalidate_tlb();
 
-        mmap_socket[i].map_to_address = 0;
+        mmap_slot[i].map_to_address = 0;
     }
 }
  
@@ -236,8 +238,8 @@ int mmap(uint32_t to_addr, const char *path, uint32_t offset, uint32_t size, boo
         return -ENOMEM;
     } 
 
-    for (mmap_i = 0; mmap_i < MAX_ALLOW_MMAP_FILE; mmap_i++) {
-        if (!mmap_socket[mmap_i].path) {
+    for (mmap_i = 0; mmap_i < MAX_NUM_MMAP; mmap_i++) {
+        if (!mmap_slot[mmap_i].path) {
             goto found;
         }
     }
@@ -248,34 +250,34 @@ found:
 
     strcpy(p , path);
     
-    mmap_socket[mmap_i].path = p;
-    mmap_socket[mmap_i].map_to_address = to_addr;
-    mmap_socket[mmap_i].file_offset = offset;
-//    mmap_socket[mmap_i].pgt = (l2_tiny_page_desc_t *)&pgt[(FILE_MAP_PGT_START + mmap_i) * PGT_ITEMS];
-    mmap_socket[mmap_i].writable = writable;
-    mmap_socket[mmap_i].writeback = writeback;
+    mmap_slot[mmap_i].path = p;
+    mmap_slot[mmap_i].map_to_address = to_addr;
+    mmap_slot[mmap_i].file_offset = offset;
+//    mmap_slot[mmap_i].pgt = (l2_tiny_page_desc_t *)&pgt[(FILE_MAP_PGT_START + mmap_i) * PGT_ITEMS];
+    mmap_slot[mmap_i].writable = writable;
+    mmap_slot[mmap_i].writeback = writeback;
     
     if(p[0] == 3)
     {
-        mmap_socket[mmap_i].f = NULL;
+        mmap_slot[mmap_i].f = NULL;
     }else{
 
-        for (int i = 0; i < MAX_ALLOW_MMAP_FILE; i++) { 
-            if((mmap_socket[i].path) && (i != mmap_i))
-                if(memcmp(mmap_socket[i].path, mmap_socket[mmap_i].path, pathLen) == 0)
+        for (int i = 0; i < MAX_NUM_MMAP; i++) { 
+            if((mmap_slot[i].path) && (i != mmap_i))
+                if(memcmp(mmap_slot[i].path, mmap_slot[mmap_i].path, pathLen) == 0)
                 {
-                    mmap_socket[mmap_i].f = mmap_socket[i].f;
+                    mmap_slot[mmap_i].f = mmap_slot[i].f;
                     printf("same file:%d %d\r\n", i, mmap_i);
                     goto after_open_file;
                 }
         }
 
-        mmap_socket[mmap_i].f = calloc(1, sizeof(lfs_file_t)); 
-        if (!mmap_socket[mmap_i].f) {
+        mmap_slot[mmap_i].f = calloc(1, sizeof(lfs_file_t)); 
+        if (!mmap_slot[mmap_i].f) {
             free(p); 
-            mmap_socket[mmap_i].path = NULL;
-            mmap_socket[mmap_i].f = NULL;
-            mmap_socket[mmap_i].map_to_address = 0;
+            mmap_slot[mmap_i].path = NULL;
+            mmap_slot[mmap_i].f = NULL;
+            mmap_slot[mmap_i].map_to_address = 0;
             printf("mmap No mem2\r\n");
             return -ENOMEM;
         }
@@ -286,30 +288,30 @@ found:
     {
         err = 0;
     }else{
-        printf("mmap:open [%s, %s]  \r\n", mmap_socket[mmap_i].path, p);
-        err = lfs_file_open(&lfs, mmap_socket[mmap_i].f, mmap_socket[mmap_i].path, mmap_socket[mmap_i].writeback ? LFS_O_RDWR : LFS_O_RDONLY);
+        printf("mmap:open [%s, %s]  \r\n", mmap_slot[mmap_i].path, p);
+        err = lfs_file_open(&lfs, mmap_slot[mmap_i].f, mmap_slot[mmap_i].path, mmap_slot[mmap_i].writeback ? LFS_O_RDWR : LFS_O_RDONLY);
     }
     if (err != LFS_ERR_OK) {
         free(p);
-        free(mmap_socket[mmap_i].f);
-            mmap_socket[mmap_i].map_to_address = 0;
-            mmap_socket[mmap_i].path = NULL;
-            mmap_socket[mmap_i].f = NULL;
+        free(mmap_slot[mmap_i].f);
+            mmap_slot[mmap_i].map_to_address = 0;
+            mmap_slot[mmap_i].path = NULL;
+            mmap_slot[mmap_i].f = NULL;
         printf("FOPEN ERR:%d\r\n", err);
         return err;
     }
 
 after_open_file:
     if (size) {
-        mmap_socket[mmap_i].size = size;
+        mmap_slot[mmap_i].size = size;
     } else {
         if(p[0] != 3)
-            mmap_socket[mmap_i].size = lfs_file_size(&lfs, mmap_socket[mmap_i].f) - mmap_socket[mmap_i].file_offset;
+            mmap_slot[mmap_i].size = lfs_file_size(&lfs, mmap_slot[mmap_i].f) - mmap_slot[mmap_i].file_offset;
         else{
-            mmap_socket[mmap_i].size = 0;
+            mmap_slot[mmap_i].size = 0;
         }
     }
-    printf("f:%s,fsz:%ld\r\n", p, mmap_socket[mmap_i].size);
+    printf("f:%s,fsz:%ld\r\n", p, mmap_slot[mmap_i].size);
     memset(&pgt[(FILE_MAP_PGT_START + mmap_i) * PGT_ITEMS], 0, PGT_SIZE);
     mmu_clean_dcache(&pgt[(FILE_MAP_PGT_START + mmap_i) * PGT_ITEMS], PGT_SIZE);
     return mmap_i;
@@ -317,7 +319,7 @@ after_open_file:
 
 void clean_file_page(uint32_t page) {
     if (page_frame_attr[page].dirty) {
-        mmap_table_t *m = &mmap_socket[page_frame_attr[page].mmap_socket];
+        mmap_table_t *m = &mmap_slot[page_frame_attr[page].mmap_slot];
         if (m->writable && m->writeback) {
             lfs_off_t file_offset = page_frame_attr[page].map_addrs - (uint32_t)m->map_to_address + m->file_offset;
             // lfs_soff_t toff =
@@ -333,24 +335,24 @@ void clean_file_page(uint32_t page) {
     }
 }
 
-void mm_set_app_mem_warp(uint32_t svaddr, uint32_t pages)
+void mm_set_app_mem_wrap(uint32_t svaddr, uint32_t pages)
 {
     if(svaddr == 0)
     {
-        app_mem_warped_at = MAIN_MEMORY_BASE;
+        app_mem_wraped_at = MAIN_MEMORY_BASE;
         app_memory_max = 0;
         side_load_pending_off = 0;
         side_load_pending_paddr = 0;
         return;
     }
 
-    app_mem_warped_at = svaddr;
+    app_mem_wraped_at = svaddr;
     app_memory_max = pages * PAGE_SIZE;
 
 
     for (int i = 0; i < PAGE_FRAMES; i++) {
-        if ((page_frame_attr[i].map_addrs >= app_mem_warped_at) && 
-                (page_frame_attr[i].map_addrs < (app_mem_warped_at + app_memory_max))) { 
+        if ((page_frame_attr[i].map_addrs >= app_mem_wraped_at) && 
+                (page_frame_attr[i].map_addrs < (app_mem_wraped_at + app_memory_max))) { 
                 if (page_frame_attr[i].dirty) {
                     page_frame_attr[i].dirty = 0;
                     if (page_frame_attr[i].map_addrs) {
@@ -369,7 +371,7 @@ void mm_set_app_mem_warp(uint32_t svaddr, uint32_t pages)
     
     mmu_invalidate_tlb();
 
-    INFO("mm warp:%08lx,%ld\r\n",svaddr,pages);
+    INFO("mm wrap:%08lx,%ld\r\n",svaddr,pages);
 }
 
 uint32_t mm_trim_page(uint32_t vaddr) {
@@ -474,7 +476,7 @@ uint32_t get_new_page_frame(uint32_t faddr) {
     }
     if (not_found) {
         cnt = 0;
-        while (((page_frame_attr[page_frame_ptr].mmap_socket) == 0b1111) || (page_frame_attr[page_frame_ptr].lock) ) {
+        while (((page_frame_attr[page_frame_ptr].mmap_slot) == 0b1111) || (page_frame_attr[page_frame_ptr].lock) ) {
             page_frame_ptr++;
             cnt++;
             if (page_frame_ptr >= PAGE_FRAMES) {
@@ -600,14 +602,23 @@ uint32_t mm_vaddr_map_pa(uint32_t vaddr)
 #define IF_BETWEEN(x, a, b) if (((x) >= (a)) && ((x) < ((a) + (b))))
 #define BETWEEN(x, a, b) ((x) >= (a)) && ((x) < (b))
 
+uint32_t is_addr_dirty(uint32_t vaddr)
+{
+    for (int i = 0; i < PAGE_FRAMES; i++) {
+        if (page_frame_attr[i].map_addrs == (vaddr & ~(PAGE_SIZE - 1))) { 
+            return page_frame_attr[i].dirty;
+        }
+    }
+    return 0;
+}
 
 uint32_t is_addr_vaild(uint32_t vaddr, bool writable) {
     //printf("chk addr:%08lx\r\n",vaddr);
     if(
     ((vaddr >= MAIN_MEMORY_BASE )
-    && (vaddr < app_mem_warped_at))
+    && (vaddr < app_mem_wraped_at))
     || 
-    ((vaddr >= (app_mem_warped_at + app_memory_max))
+    ((vaddr >= (app_mem_wraped_at + app_memory_max))
     && (vaddr < MAIN_MEMORY_BASE + memory_max))
     )
     {
@@ -622,9 +633,9 @@ uint32_t is_addr_vaild(uint32_t vaddr, bool writable) {
         return 1;
     }
 
-    for (int i = 0; i < MAX_ALLOW_MMAP_FILE; i++) {
-        IF_BETWEEN(vaddr, (uint32_t)mmap_socket[i].map_to_address, mmap_socket[i].size) {
-            if(mmap_socket[i].writable >= writable)
+    for (int i = 0; i < MAX_NUM_MMAP; i++) {
+        IF_BETWEEN(vaddr, (uint32_t)mmap_slot[i].map_to_address, mmap_slot[i].size) {
+            if(mmap_slot[i].writable >= writable)
                 return 1;
         }
     }
@@ -640,22 +651,22 @@ int do_dab(uint8_t FSR, uint32_t faddr, uint32_t pc, uint8_t faultMode) {
     case 0xF5:  // DAB
         if(
             ((faddr >= MAIN_MEMORY_BASE )
-            && (faddr < app_mem_warped_at))
+            && (faddr < app_mem_wraped_at))
             || 
-            ((faddr >= (app_mem_warped_at + app_memory_max))
+            ((faddr >= (app_mem_wraped_at + app_memory_max))
             && (faddr < MAIN_MEMORY_BASE + memory_max))
             )
         {
             int pgf = set_new_pgf(faddr, PGT_MAIN_MEM);
-            page_frame_attr[pgf].mmap_socket = 0b1111;
+            page_frame_attr[pgf].mmap_slot = 0b1111;
             return 0;
         }else IF_BETWEEN(faddr, APP_MEMORY_BASE, app_memory_max) {
             int pgf = set_new_pgf(faddr, PGT_MAIN_MEM);
-            page_frame_attr[pgf].mmap_socket = 0b1111;
+            page_frame_attr[pgf].mmap_slot = 0b1111;
             return 0;
         }else {
-            for (int i = 0; i < MAX_ALLOW_MMAP_FILE; i++) {
-                IF_BETWEEN(faddr, (uint32_t)mmap_socket[i].map_to_address, mmap_socket[i].size) {
+            for (int i = 0; i < MAX_NUM_MMAP; i++) {
+                IF_BETWEEN(faddr, (uint32_t)mmap_slot[i].map_to_address, mmap_slot[i].size) {
                     // assert(i != 0b111);
                     //if (GetMPTELoc(3 + i) != ADDR_SECTION_INDEX(faddr)) {
                     //    memset(&pgt[(FILE_MAP_PGT_START + i) * PGT_ITEMS], 0, PGT_SIZE);
@@ -665,23 +676,23 @@ int do_dab(uint8_t FSR, uint32_t faddr, uint32_t pc, uint8_t faultMode) {
                     //set_l1_desc(ADDR_SECTION_INDEX(faddr), PA(&pgt[(FILE_MAP_PGT_START + i) * PGT_ITEMS]), 0, SECTION_TYPE_FINE);
                     
                     int pgf = set_new_pgf(faddr, FILE_MAP_PGT_START + i);
-                    page_frame_attr[pgf].mmap_socket = i & 0b1111; 
+                    page_frame_attr[pgf].mmap_slot = i & 0b1111; 
                     
-                    // page_frame_attr[pgf].writeback = mmap_socket[i].writeback;
-                    if(mmap_socket[i].path[0] == '\03')
+                    // page_frame_attr[pgf].writeback = mmap_slot[i].writeback;
+                    if(mmap_slot[i].path[0] == '\03')
                     {
                         side_load_pending_paddr = PA(&page_frames[pgf * PAGE_SIZE]);
-                        side_load_pending_off = (faddr & ~(PAGE_SIZE - 1)) - (uint32_t)mmap_socket[i].map_to_address + mmap_socket[i].file_offset;
+                        side_load_pending_off = (faddr & ~(PAGE_SIZE - 1)) - (uint32_t)mmap_slot[i].map_to_address + mmap_slot[i].file_offset;
                         //printf("F:%08lX,  %08lX, ms:%08lX\r\n",faddr, side_load_pending_paddr, side_load_pending_off );
                         //page_frame_attr[pgf].for_side_load = 1;
                         page_frame_attr[pgf].lock = 1;
                         return 1;
                     }else{
-                        lfs_off_t file_offset = (faddr & ~(PAGE_SIZE - 1)) - (uint32_t)mmap_socket[i].map_to_address + mmap_socket[i].file_offset;
-                        lfs_file_seek(&lfs, mmap_socket[i].f, file_offset, LFS_SEEK_SET);
+                        lfs_off_t file_offset = (faddr & ~(PAGE_SIZE - 1)) - (uint32_t)mmap_slot[i].map_to_address + mmap_slot[i].file_offset;
+                        lfs_file_seek(&lfs, mmap_slot[i].f, file_offset, LFS_SEEK_SET);
                         // lfs_ssize_t rdc =
-                        lfs_file_read(&lfs, mmap_socket[i].f, (void *)PA(&page_frames[pgf * PAGE_SIZE]), PAGE_SIZE);
-                        //lfs_file_read(&lfs, mmap_socket[i].f, (void *)(faddr & ~(PAGE_SIZE - 1)), PAGE_SIZE);
+                        lfs_file_read(&lfs, mmap_slot[i].f, (void *)PA(&page_frames[pgf * PAGE_SIZE]), PAGE_SIZE);
+                        //lfs_file_read(&lfs, mmap_slot[i].f, (void *)(faddr & ~(PAGE_SIZE - 1)), PAGE_SIZE);
                         // assert(rdc > 0);
                         // printf("rd fo:%ld,rd:%ld\r\n", file_offset, rdc);
                     }
@@ -706,9 +717,9 @@ int do_dab(uint8_t FSR, uint32_t faddr, uint32_t pc, uint8_t faultMode) {
     case 0b1101: // D Permission
         if(
             ((faddr >= MAIN_MEMORY_BASE )
-            && (faddr < app_mem_warped_at))
+            && (faddr < app_mem_wraped_at))
             || 
-            ((faddr >= (app_mem_warped_at + app_memory_max))
+            ((faddr >= (app_mem_wraped_at + app_memory_max))
             && (faddr < MAIN_MEMORY_BASE + memory_max))
             )
         {
@@ -723,9 +734,9 @@ int do_dab(uint8_t FSR, uint32_t faddr, uint32_t pc, uint8_t faultMode) {
             set_pgf_perm(faddr);
             return 0;
         }else {
-            for (int i = 0; i < MAX_ALLOW_MMAP_FILE; i++) {
-                IF_BETWEEN(faddr, (uint32_t)mmap_socket[i].map_to_address, mmap_socket[i].size) {
-                    if (mmap_socket[i].writable == false) {
+            for (int i = 0; i < MAX_NUM_MMAP; i++) {
+                IF_BETWEEN(faddr, (uint32_t)mmap_slot[i].map_to_address, mmap_slot[i].size) {
+                    if (mmap_slot[i].writable == false) {
                         INFO("mmap:%d can't write.\r\n", i);
                         goto err;
                     } else {

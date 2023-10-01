@@ -11,7 +11,7 @@
 
 #include "config.h"
 #include "utils.h"
-
+#if 0
 static void *heap = NULL;
 
 uint32_t get_free_mem()
@@ -119,5 +119,5 @@ void _exit(int i)
     while (1)
         ;
 }
-
+#endif
  

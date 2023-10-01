@@ -18,6 +18,7 @@ DECDEF_LLAPI_SWI(uint32_t,      llapi_get_ram_size,          (void),            
 DECDEF_LLAPI_SWI(uint32_t,      llapi_get_tick_ms,           (void),                 LLAPI_APP_GET_TICK_MS)
 DECDEF_LLAPI_SWI(uint32_t,      llapi_get_tick_us,           (void),                 LLAPI_APP_GET_TICK_US)
 DECDEF_LLAPI_SWI(int,           llapi_query_key,             (void),                 LLAPI_APP_QUERY_KEY)
+DECDEF_LLAPI_SWI(int,           llapi_is_key_down,           (uint32_t key),         LLAPI_APP_IS_KEY_DOWN)
 DECDEF_LLAPI_SWI(int,           llapi_rtc_get_s,             (void),                                      LLAPI_APP_RTC_GET_S)
 DECDEF_LLAPI_SWI(uint32_t,      llapi_rtc_set_s,             (uint32_t s),                                LLAPI_APP_RTC_SET_S)
     
@@ -25,10 +26,13 @@ DECDEF_LLAPI_SWI(uint32_t,      llapi_rtc_set_s,             (uint32_t s),      
 DECDEF_LLAPI_SWI(void,          llapi_disp_put_point,        (uint32_t x, uint32_t y, int c),    LLAPI_APP_DISP_PUT_P)
 DECDEF_LLAPI_SWI(int,           llapi_disp_get_point,        (uint32_t x, uint32_t y),           LLAPI_APP_DISP_GET_P)
 DECDEF_LLAPI_SWI(void,          llapi_disp_put_hline,        (uint32_t y, char *dat),            LLAPI_APP_DISP_PUT_HLINE)
+DECDEF_LLAPI_SWI(void,          llapi_disp_put_hline_len,    (uint32_t y, char *dat, uint32_t len),             LLAPI_APP_DISP_PUT_HLINE_LEN)
+DECDEF_LLAPI_SWI(void,          llapi_disp_put_kstr,         (uint32_t x, uint32_t y, char *s, uint32_t fgbg),  LLAPI_APP_DISP_PUT_KSTRING)
+DECDEF_LLAPI_SWI(void,          llapi_disp_clean,            (uint32_t bg),                                     LLAPI_APP_DISP_CLEAN)
 
 DECDEF_LLAPI_SWI(uint32_t,      llapi_fs_get_dirobj_sz,      (void)                                      ,LL_SWI_FS_GET_DIROBJ_SZ      );
 DECDEF_LLAPI_SWI(uint32_t,      llapi_fs_get_fobj_sz,        (void)                                      ,LL_SWI_FS_GET_FOBJ_SZ        );
-DECDEF_LLAPI_SWI(int,           ll_fs_size,                  (fs_obj_t fobj)                             ,LL_SWI_FS_SIZE               );
+DECDEF_LLAPI_SWI(int,           llapi_fs_size,               (fs_obj_t fobj)                             ,LL_SWI_FS_SIZE               );
 DECDEF_LLAPI_SWI(int,           llapi_fs_remove,             (const char *path)                          ,LL_SWI_FS_REMOVE             );
 DECDEF_LLAPI_SWI(int,           llapi_fs_rename,             (const char *oldpath, const char *newpath)  ,LL_SWI_FS_RENAME             );
 DECDEF_LLAPI_SWI(int,           llapi_fs_open,               (fs_obj_t fobj, const char *path, int flag) ,LL_SWI_FS_OPEN               );
@@ -52,6 +56,6 @@ DECDEF_LLAPI_SWI(uint32_t,      llapi_fs_dir_cur_item_size,  (fs_dir_obj_t dir_o
 DECDEF_LLAPI_SWI(int,           llapi_fs_dir_cur_item_type,  (fs_dir_obj_t dir_obj)                      ,LL_SWI_FS_DIR_GET_CUR_TYPE   );
 
 
-DECDEF_LLAPI_SWI(int,               llapi_mmap,              (mmap_info *info)                           ,LL_SWI_MMAP                  );
-DECDEF_LLAPI_SWI(void,              llapi_mumap,             (int map)                                   ,LL_SWI_MUNMAP                );
+DECDEF_LLAPI_SWI(int,               llapi_mmap,              (mmap_info *info)                           ,LLAPI_MMAP                  );
+DECDEF_LLAPI_SWI(void,              llapi_mumap,             (int map)                                   ,LLAPI_MUNMAP                );
 

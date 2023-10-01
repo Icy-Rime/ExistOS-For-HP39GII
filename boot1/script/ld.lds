@@ -1,6 +1,6 @@
 
 pgt_size = (1+5)*4096;
-page_frame_size = 424K;
+page_frame_size = 420K;
 exception_stack_sz	= 4K; 
 
 OUTPUT_ARCH(arm)

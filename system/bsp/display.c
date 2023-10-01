@@ -605,6 +605,21 @@ void bsp_diaplay_put_hline(uint32_t y, void *dat)
     lcd_write_line(cur_line);
 }
 
+void bsp_diaplay_put_hline_len(uint32_t y, void *dat,uint32_t len)
+{
+    if ((y >= SCREEN_HEIGHT))
+        return;
+    if(len > 256)
+        return;
+        
+    y += 8;
+    
+    bsp_display_flush();
+    memcpy(line_Buffer, dat, len);
+    cur_line = y;
+    lcd_write_line(cur_line);
+}
+
 void bsp_display_putk_string(uint32_t x, uint32_t y, char *s, uint32_t fg, uint32_t bg)
 {
     uint32_t str_len = strlen(s);

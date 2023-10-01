@@ -63,15 +63,29 @@ int fs_read_custom(struct fs_file *file, char *buffer, int count)
     //printf("count:%d, f:%d\r\n",count, file->data);
     if(file->pextension == READ_STDOUT)
     {
-        uint8_t val;
+        uint8_t val, val2;
         int i = 0;
-        val = stdout_rb_read();
-        if(!val)
-            return -1;
-        do{
+
+        val = ll_get_boot0_log_ch();
+        while((val) && (count))
+        {
             buffer[i++] = val;
             count--;
-        }while((val = stdout_rb_read()) && count);
+            val = ll_get_boot0_log_ch();
+        }
+
+
+        val = stdout_rb_read();
+        while((val) && (count))
+        {
+            buffer[i++] = val;
+            count--;
+            val = stdout_rb_read();
+        }
+
+        if(i == 0)
+            return -1;
+
         return i;
     }
     else if(file->pextension == READ_DATA_SCREEN)

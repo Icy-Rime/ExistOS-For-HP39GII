@@ -87,6 +87,12 @@ uint8_t key_rb[128];
 int key_rb_wp = 0;
 int key_rb_rp = 0;
 
+void clear_key_queue()
+{
+    key_rb_wp = 0;
+    key_rb_rp = 0;
+}
+
 int sys_query_key()
 {
     int ret = 0;

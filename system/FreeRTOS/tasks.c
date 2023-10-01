@@ -329,6 +329,24 @@ typedef struct tskTaskControlBlock       /* The old naming convention is used to
  * below to enable the use of older kernel aware debuggers. */
 typedef tskTCB TCB_t;
 
+void pre_save_tcb(TaskHandle_t dest)
+{
+    TCB_t *t = dest;
+    t->pxTopOfREGFrameStack = (volatile StackType_t *)((uint32_t)t->pxTopOfREGFrameStack - (uint32_t)&t->REGFrame[0]);
+}
+
+void tcb_restore(TaskHandle_t ref, TaskHandle_t dest)
+{
+    TCB_t *r = ref;
+    TCB_t *t = dest;
+
+    t->pxStack = r->pxStack;
+    t->pxTopOfStack = r->pxTopOfStack;
+    memcpy(t->REGFrame, r->REGFrame, portCONTEXT_FRAME_SIZE);
+    t->pxTopOfREGFrameStack = (volatile StackType_t *)((uint32_t)r->pxTopOfREGFrameStack + (uint32_t)&t->REGFrame[0]);
+    memcpy(t->pcTaskName, r->pcTaskName, configMAX_TASK_NAME_LEN);
+
+}
 /*lint -save -e956 A manual analysis and inspection has been used to determine
  * which static variables must be declared volatile. */
 portDONT_DISCARD PRIVILEGED_DATA TCB_t * volatile pxCurrentTCB = NULL;
@@ -1012,7 +1030,7 @@ static void prvInitialiseNewTask( TaskFunction_t pxTaskCode,
                     #if ( portCONTEXT_REGS_IN_TCB == 1 )
                         //printf("pxNewTCB %p\n",pxNewTCB);
                         pxNewTCB->pxTopOfStack = pxTopOfStack;
-                        memset(pxNewTCB->REGFrame, 0xFE, portCONTEXT_FRAME_SIZE);
+                        memset(pxNewTCB->REGFrame, 0x5A, portCONTEXT_FRAME_SIZE);
                         pxNewTCB->pxTopOfREGFrameStack = pxPortInitialiseStack(pxNewTCB->REGFrame, pxTopOfStack, pxTaskCode, pvParameters );
                         
                         //pxNewTCB->pxTopOfStack = pxPortInitialiseStack((BaseType_t *)pxNewTCB, pxTopOfStack, pxTaskCode, pvParameters );

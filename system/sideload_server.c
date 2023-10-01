@@ -33,6 +33,7 @@ static fs_obj_t sls_upload = NULL;
 
 #define CMD_CMP(x) memcmp(p->payload, (x), (sizeof(x) - 1)) == 0
 
+#if 0
 uint32_t hist1_lock_vaddr[3];
 uint32_t hist2_lock_vaddr[3];
 uint32_t *p_hist_lock_vaddr = hist1_lock_vaddr;
@@ -49,7 +50,7 @@ void sls_unlock_all() {
         }
     }
 }
-
+#endif 
 uint32_t last_vaddr = 0;
 static void udp_recv_proc(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *addr, u16_t port) {
     char cmdbuf[64];
@@ -186,12 +187,15 @@ static void udp_recv_proc(void *arg, struct udp_pcb *upcb, struct pbuf *p, const
         memset(cmdbuf, 0, sizeof(cmdbuf));
         strncpy(cmdbuf, &((char *)p->payload)[sizeof("EXEC_") - 1], sizeof(cmdbuf) - sizeof("EXEC_") - 1);
         printf("run:[%s]\r\n", cmdbuf);
+        
+        app_selector_stop();
         app_stop();
         app_pre_start(cmdbuf, false, 0);
         app_start();
         ((char *)out->payload)[0] = 'T';
     } else if (CMD_CMP("KILL")) {
         app_stop();
+        app_selector_start();
         ((char *)out->payload)[0] = 'T';
     } 
     #if 0
@@ -222,6 +226,7 @@ recerr:
     pbuf_free(p);
 }
 
+#if 0
 void sls_send_request(uint32_t pgoff, uint32_t fill_to_paddr, uint32_t vaddr, TaskHandle_t task) {
     if (!client_port)
         return;
@@ -241,6 +246,7 @@ void sls_send_request(uint32_t pgoff, uint32_t fill_to_paddr, uint32_t vaddr, Ta
 
     pbuf_free(out);
 }
+#endif
 
 void sls_init() {
     err_t err;

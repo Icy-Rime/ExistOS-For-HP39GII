@@ -21,11 +21,13 @@ DECDEF_LLSWI(void,        ll_set_pab_vector,        (uint32_t addr)             
 DECDEF_LLSWI(void,        ll_set_dab_stack,         (uint32_t addr)                             ,LL_SWI_SET_DAB_STACK         );
 DECDEF_LLSWI(void,        ll_set_pab_stack,         (uint32_t addr)                             ,LL_SWI_SET_PAB_STACK         );
 DECDEF_LLSWI(void,        ll_set_svc_stack,         (uint32_t addr)                             ,LL_SWI_SET_SVC_STACK         );
+DECDEF_LLSWI(uint8_t,     ll_get_boot0_log_ch,      (void)                                      ,LL_SWI_GET_BOOT0_LOG_CHAR    );
 DECDEF_LLSWI(void,        ll_exit_svc,              (void)                                      ,LL_SWI_EXIT_SYS_SVC          );
     
 DECDEF_LLSWI(uint32_t,    ll_mm_trim_vaddr,         (uint32_t addr)                             ,LL_SWI_SET_MEM_TRIM          );
 DECDEF_LLSWI(uint32_t,    ll_vaddr_vaild,           (uint32_t addr)                             ,LL_SWI_MEM_IS_VAILD          );
-DECDEF_LLSWI(void,        ll_set_app_mem_warp,      (uint32_t vaddr, uint32_t pages)            ,LL_SWI_SET_APP_MEM_WARP      );
+DECDEF_LLSWI(uint32_t,    ll_vaddr_dirty,           (uint32_t addr)                             ,LL_SWI_MEM_IS_DIRTY          );
+DECDEF_LLSWI(void,        ll_set_exp_mem_wrap,      (uint32_t vaddr, uint32_t pages)            ,LL_SWI_SET_APP_MEM_WRAP      );
 DECDEF_LLSWI(int,         ll_mmap,                  (mmap_info *info)                           ,LL_SWI_MMAP                  );
 DECDEF_LLSWI(void,        ll_mumap,                 (int map)                                   ,LL_SWI_MUNMAP                );
 DECDEF_LLSWI(uint32_t,    ll_get_pending_pgpaddr,   (void)                                      ,LL_SWI_GET_PENDING_PGADDR    );
