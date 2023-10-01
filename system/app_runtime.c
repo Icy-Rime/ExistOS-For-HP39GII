@@ -46,7 +46,9 @@ uint32_t exp_main_thread_stack_sz = 0;
 void pre_save_tcb(TaskHandle_t dest);
 void tcb_restore(TaskHandle_t ref, TaskHandle_t dest);
 
-
+//static uint8_t app_ram[380 * 1024] __aligned(1024);
+extern uint8_t app_ram;
+extern uint8_t app_ram_end;
 static void clean_flist(file_list_t **flist)
 {
     if(*flist)
@@ -142,7 +144,7 @@ void app_stop()
     } 
  
     ll_set_exp_mem_wrap(0, 0);
-    free(exp_mem_wrap_alloc);
+    //free(exp_mem_wrap_alloc);
     exp_mem_wrap_alloc = NULL;
  
     ll_mumap(exp_self_mmap);
@@ -203,17 +205,22 @@ void app_start()
 
     vTaskSuspendAll();
 
+    
+    //uint32_t free_mem = getFreeMemSz() - 16*1024;
+    //exp_mem_wrap_alloc = malloc(free_mem);
+    //exp_mem_wrap_at = (uint32_t)exp_mem_wrap_alloc;
+    //while((exp_mem_wrap_at % 1024))
+    //{
+    //    exp_mem_wrap_at++;
+    //}  
+    //exp_mem_size = (free_mem/1024) - 1;
+    //ll_set_exp_mem_wrap(exp_mem_wrap_at, exp_mem_size);
+    //exp_mem_size = exp_mem_size * 1024;
 
-    uint32_t free_mem = getFreeMemSz() - 16*1024;
-    exp_mem_wrap_alloc = malloc(free_mem);
-    exp_mem_wrap_at = (uint32_t)exp_mem_wrap_alloc;
-    while((exp_mem_wrap_at % 1024))
-    {
-        exp_mem_wrap_at++;
-    }  
-    exp_mem_size = (free_mem/1024) - 1;
-    ll_set_exp_mem_wrap(exp_mem_wrap_at, exp_mem_size);
-    exp_mem_size = exp_mem_size * 1024;
+    exp_mem_wrap_at = (uint32_t)&app_ram;
+    exp_mem_size = (uint32_t)&app_ram_end - exp_mem_wrap_at;
+    ll_set_exp_mem_wrap(exp_mem_wrap_at, exp_mem_size/1024);
+    exp_mem_size = exp_mem_size;
     
     printf("Allocate App Mem:%ld\r\n", exp_mem_size);
     
@@ -763,17 +770,22 @@ static void load_sav(char *sav_path)
 
         printf("Restore mem sz:%08lX\r\n", memsz);
 
-        exp_mem_wrap_alloc = malloc(memsz + 2*1024);
-        assert(exp_mem_wrap_alloc);
-        exp_mem_wrap_at = (uint32_t)exp_mem_wrap_alloc;
-        while((exp_mem_wrap_at % 1024))
-        {
-            exp_mem_wrap_at++;
-        }  
-        exp_mem_size = (memsz/1024);
+        //exp_mem_wrap_alloc = malloc(memsz + 1*1024);
+        //assert(exp_mem_wrap_alloc);
+        //exp_mem_wrap_at = (uint32_t)exp_mem_wrap_alloc;
+        //while((exp_mem_wrap_at % 1024))
+        //{
+        //    exp_mem_wrap_at++;
+        //}  
+        //exp_mem_size = (memsz/1024);
+        //ll_set_exp_mem_wrap(exp_mem_wrap_at, exp_mem_size);
+        //exp_mem_size = exp_mem_size * 1024;
+
+        
+        exp_mem_wrap_at = (uint32_t)&app_ram;
+        exp_mem_size = memsz / 1024;
         ll_set_exp_mem_wrap(exp_mem_wrap_at, exp_mem_size);
         exp_mem_size = exp_mem_size * 1024;
-
         printf("Reload allocate App Mem:%ld\r\n", exp_mem_size);
 
 

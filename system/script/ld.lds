@@ -113,7 +113,13 @@ SECTIONS
 	
 	. = ALIGN(8);
 	heap_start = .;
-	heap_end = ORIGIN(ram) + LENGTH(ram) - 4;
+	heap_end = heap_start + 32K;
+	/* heap_end = ORIGIN(ram) + LENGTH(ram) - 4; */
+
+	. = heap_end;
+	. = ALIGN(1024);
+	app_ram = .; 
+	app_ram_end = ORIGIN(ram) + LENGTH(ram) ;
 
   .ARM.attributes 0 : { *(.ARM.attributes) }
 
