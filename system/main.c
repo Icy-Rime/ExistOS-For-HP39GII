@@ -34,15 +34,15 @@ void SysMonitor(void *t) {
 
     printf("Sys start.\r\n ");
 
-    fs_dir_obj_t dir = malloc(ll_fs_get_dirobj_sz());
-    printf("----lsdir------\r\n");
-    int ret = ll_fs_dir_open(dir, "/");
-    while (ll_fs_dir_read(dir) > 0) {
-        printf("%s   \t%d   \t%d\r\n", ll_fs_dir_cur_item_name(dir), ll_fs_dir_cur_item_type(dir), ll_fs_dir_cur_item_size(dir));
-    }
-    printf("---------------\r\n");
-    ll_fs_dir_close(dir);
-    free(dir);
+    //fs_dir_obj_t dir = malloc(ll_fs_get_dirobj_sz());
+    //printf("----lsdir------\r\n");
+    //int ret = ll_fs_dir_open(dir, "/");
+    //while (ll_fs_dir_read(dir) > 0) {
+    //    printf("%s   \t%d   \t%d\r\n", ll_fs_dir_cur_item_name(dir), ll_fs_dir_cur_item_type(dir), ll_fs_dir_cur_item_size(dir));
+    //}
+    //printf("---------------\r\n");
+    //ll_fs_dir_close(dir);
+    //free(dir);
 
     while (1) {
 #if configUSE_TRACE_FACILITY
@@ -154,6 +154,7 @@ void sys() {
 
 int main() {
 
+    bsp_set_perf_level(4);
     ll_set_irq_vector((uint32_t)sys_irq);
     ll_set_svc_vector((uint32_t)sys_svc);
     ll_set_dab_vector((uint32_t)sys_dab);
@@ -179,6 +180,11 @@ int main() {
     vTaskStartScheduler();
     while (1)
         ;
+}
+
+void vApplicationIdleHook( void )
+{
+    bsp_wait_for_irq();
 }
 
 StackType_t xIdleTaskStack[configMINIMAL_STACK_SIZE];

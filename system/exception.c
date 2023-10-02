@@ -211,7 +211,10 @@ void __attribute__((naked)) __attribute__((target("arm"))) sys_svc()
     case LLAPI_APP_IS_KEY_DOWN: 
         pRegFram[0 + 2] = bsp_is_key_down(pRegFram[0 + 2]); 
         break;
-    case LL_SWI_THREAD_CREATE:
+    case LLAPI_SET_PERF_LEVEL:
+        bsp_set_perf_level(pRegFram[0 + 2]);
+        break;
+    case LLAPI_THREAD_CREATE:
     {
             app_api_info_t info;
             uint32_t ShouldYield = 0;

@@ -7,4 +7,5 @@ add_subdirectory(faultTask)
 add_subdirectory(riscvsim)   
 add_subdirectory(helloworld)   
 add_subdirectory(gameboy)   
+add_subdirectory(emu48)   
      

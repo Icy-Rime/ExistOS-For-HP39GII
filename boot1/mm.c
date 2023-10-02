@@ -223,6 +223,8 @@ void munmap(uint32_t i)
 
         mmap_slot[i].map_to_address = 0;
     }
+    
+    INFO("c munmap:%ld done\r\n", i);
 }
  
  
@@ -321,6 +323,8 @@ void clean_file_page(uint32_t page) {
     if (page_frame_attr[page].dirty) {
         mmap_table_t *m = &mmap_slot[page_frame_attr[page].mmap_slot];
         if (m->writable && m->writeback) {
+            
+            printf("cln:%ld\r\n", page);
             lfs_off_t file_offset = page_frame_attr[page].map_addrs - (uint32_t)m->map_to_address + m->file_offset;
             // lfs_soff_t toff =
             mmu_clean_dcache((void *)page_frame_attr[page].map_addrs, PAGE_SIZE);

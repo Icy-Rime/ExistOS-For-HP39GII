@@ -231,7 +231,7 @@ void vGL_putString(int x0, int y0, const char *s, int fg, int bg, int fontSize) 
         }
     }
 
-    vGL_FlushVScreen();
+    //vGL_FlushVScreen();
 }
 
 
@@ -244,7 +244,7 @@ void vGL_clearArea(unsigned int x0, unsigned int y0, unsigned int x1, unsigned i
         vGL_SetPoint(x,y,COLOR_WHITE); // virtual_screen[x + y * VIR_LCD_PIX_W] = COLOR_WHITE;
       }
     }
-    vGL_FlushVScreen();
+    //vGL_FlushVScreen();
 }
 
 
@@ -257,7 +257,7 @@ void vGL_setArea(unsigned int x0, unsigned int y0, unsigned int x1, unsigned int
               vGL_SetPoint(x,y,color); // virtual_screen[x + y * VIR_LCD_PIX_W] = color;
             }
         }
-    vGL_FlushVScreen();    
+    //vGL_FlushVScreen();    
 }
 
 
@@ -274,7 +274,7 @@ void vGL_reverseArea(unsigned int x0, unsigned int y0, unsigned int x1, unsigned
           screen_1bpp[pos] ^= shift; 
         }
       }
-        vGL_FlushVScreen();
+        //vGL_FlushVScreen();
     }
     else
      {
@@ -342,7 +342,7 @@ void flush_indBit()
 bool IsKeyDown(int test_key)
 {
 
-
+    printf("IsKeyDown:%d\r\n", test_key);
     return false;
 }
 
@@ -358,7 +358,8 @@ int  GetKey(int *key)
     int pkey = raw_key & 0x7F;
     bool press = !(raw_key >> 7);
 
-    if (pkey != 0x7F && press) {
+    if (pkey != 0x7F && press) 
+    {
         // printf("pkey:%08x\n", key);
 
         switch (pkey) {
@@ -735,6 +736,9 @@ void Bfile_NameToStr_ncpy(unsigned char *dest, const unsigned short *source , in
 extern "C" bool file_exists(const char * filename);
 
 bool file_exists(const char * filename){
+
+ 
+  printf("file_exists:[%s]\n",filename);
   unsigned short dest[strlen(filename)+1]={0};
   Bfile_StrToName_ncpy(dest,(const unsigned char *)filename,strlen(filename));
   //FIL handle;
@@ -816,6 +820,8 @@ int Bfile_CreateFile(unsigned short *pFile, int size) {
 }
 
 void Bfile_CloseFile_OS(int hFile) {
+    
+  printf("Bfile_CloseFile_OS:[%d]\n",hFile);
     fs_obj_t handle = (fs_obj_t)hFile;
     llapi_fs_close(handle);
     free(handle);
@@ -837,6 +843,8 @@ void Bfile_WriteFile_OS(int hFile, const char *data, size_t len) {
 }
 
 void Bfile_DeleteEntry(unsigned short *pFile) {
+    
+  printf("Bfile_DeleteEntry:[%s]\n",(char *)pFile);
     llapi_fs_remove((char *)pFile);
 }
 

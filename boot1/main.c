@@ -361,17 +361,17 @@ int main(int par, char **argc) {
 
 
     ret = lfs_mount(&lfs, &cfg);
-    if (ret == LFS_ERR_OK) {
-        lfs_dir_t dir;
-        struct lfs_info info;
-        lfs_dir_open(&lfs, &dir, "/");
-        printf("----lsdir----\r\n");
-        while (lfs_dir_read(&lfs, &dir, &info) > 0) {
-            printf("%s\r\n", info.name);
-        }
-        printf("----lsdir----\r\n");
-        lfs_dir_close(&lfs, &dir);
-    }
+    //if (ret == LFS_ERR_OK) {
+    //    lfs_dir_t dir;
+    //    struct lfs_info info;
+    //    lfs_dir_open(&lfs, &dir, "/");
+    //    printf("----lsdir----\r\n");
+    //    while (lfs_dir_read(&lfs, &dir, &info) > 0) {
+    //        printf("%s\r\n", info.name);
+    //    }
+    //    printf("----lsdir----\r\n");
+    //    lfs_dir_close(&lfs, &dir);
+    //}
     printf("LFS MOUNT:%d\r\n", ret);
 
     //printf("mkdirt:%d\r\n", lfs_mkdir(&lfs,"testdir"));

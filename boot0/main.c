@@ -359,15 +359,15 @@ int main() {
         // remember the storage is not updated until the file is closed successfully
         lfs_file_close(&lfs, &file);
 
-        lfs_dir_t dir;
-        struct lfs_info info;
-        lfs_dir_open(&lfs, &dir, "/");
-        printf("----lsdir----\r\n");
-        while (lfs_dir_read(&lfs, &dir, &info) > 0) {
-            printf("%s\r\n", info.name);
-        }
-        printf("----lsdir----\r\n");
-        lfs_dir_close(&lfs, &dir);
+        //lfs_dir_t dir;
+        //struct lfs_info info;
+        //lfs_dir_open(&lfs, &dir, "/");
+        //printf("----lsdir----\r\n");
+        //while (lfs_dir_read(&lfs, &dir, &info) > 0) {
+        //    printf("%s\r\n", info.name);
+        //}
+        //printf("----lsdir----\r\n");
+        //lfs_dir_close(&lfs, &dir);
 
         bsp_delayms(500);
         if (bsp_keyboard_is_key_down(KEY_F2)) {

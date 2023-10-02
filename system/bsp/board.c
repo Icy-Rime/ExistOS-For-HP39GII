@@ -4,6 +4,14 @@
 #include "board.h" 
 #include "utils.h"
 
+void bsp_wait_for_irq()
+{
+    __asm volatile (
+    "mov R0, #0 \n"
+    "mcr p15,0,r0,c7,c0,4 \n"
+    "nop"
+    );
+}
 
 uint32_t bsp_time_get_us(void)
 {
@@ -93,7 +101,51 @@ void bsp_reset()
 
 void bsp_board_init()
 {
-   
- 
- 
+    uint32_t uclkctrl;
+    uclkctrl = HW_CLKCTRL_CPU_RD();
+    uclkctrl |= BM_CLKCTRL_CPU_INTERRUPT_WAIT;
+    HW_CLKCTRL_CPU_WR(uclkctrl);
+
+}
+
+
+void setHCLKDivider(uint32_t div) ;
+void setCPUDivider(uint32_t div) ;
+
+/*
+0：	    CPU:   392MHz   HCLK:  196MHz
+1：	    CPU:   196MHz   HCLK:  196MHz
+2：	    CPU:   130MHz   HCLK:  130MHz
+3：	    CPU:   98MHz    HCLK:  98MHz
+4：	    CPU:   78MHz    HCLK:  78MHz
+5：	    CPU:   65MHz    HCLK:  65MHz
+6：	    CPU:   56MHz    HCLK:  56MHz
+7：	    CPU:   49MHz    HCLK:  49MHz
+8：	    CPU:   43MHz    HCLK:  43MHz
+9：	    CPU:   39MHz    HCLK:  39MHz
+10：	CPU:   35MHz    HCLK:  35MHz
+11：	CPU:   32MHz    HCLK:  32MHz
+12：	CPU:   30MHz    HCLK:  30MHz
+13：	CPU:   28MHz    HCLK:  28MHz
+14：	CPU:   26MHz    HCLK:  26MHz
+15：	CPU:   24MHz    HCLK:  24MHz
+*/
+void bsp_set_perf_level(uint32_t n)
+{
+    if(n > 15)n=15;
+    uint32_t d = n+1;
+    if(n < 2)
+    {
+        setHCLKDivider(2); 
+        setCPUDivider(d);
+    }else{
+        setCPUDivider(d);
+        setHCLKDivider(1);
+    }
+    
+}
+
+uint32_t bsp_get_perf_level()
+{
+    return BF_RD(CLKCTRL_CPU, DIV_CPU) - 1;
 }

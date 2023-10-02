@@ -60,4 +60,6 @@ DECDEF_LLAPI_SWI(int,               llapi_mmap,              (mmap_info *info)  
 DECDEF_LLAPI_SWI(void,              llapi_mumap,             (int map)                                   ,LLAPI_MUNMAP                );
 
 
-DECDEF_LLAPI_SWI(int,           llapi_thread_create,     (void *code, uint32_t *stack, uint32_t stackSz, void *par)  ,LL_SWI_THREAD_CREATE    );
+DECDEF_LLAPI_SWI(int,           llapi_thread_create,     (void *code, uint32_t *stack, uint32_t stackSz, void *par)  ,LLAPI_THREAD_CREATE    );
+DECDEF_LLAPI_SWI(void,          llapi_set_perf_level,    (int level)                                                 ,LLAPI_SET_PERF_LEVEL    );
+

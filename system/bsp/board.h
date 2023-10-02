@@ -31,6 +31,7 @@
 uint32_t bsp_time_get_us(void);
 
 uint32_t bsp_time_get_ms(void);
+void bsp_wait_for_irq();
 void bsp_time_reset_mstick();
 
 uint32_t bsp_rtc_get_s(void);
@@ -80,6 +81,8 @@ void bsp_display_flush();
 
 void bsp_reset();
 
+void bsp_set_perf_level(uint32_t n);
+uint32_t bsp_get_perf_level();
 
 #include "keyboard.h"
 

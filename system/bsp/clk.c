@@ -9,7 +9,7 @@ static void PLLEnable(bool enable) {
 }
 
 
-static void setHCLKDivider(uint32_t div) 
+void setHCLKDivider(uint32_t div) 
 {
     if (!div) {
         return;
@@ -22,7 +22,7 @@ static void setHCLKDivider(uint32_t div)
 }
 
 
-static void setCPUDivider(uint32_t div) 
+void setCPUDivider(uint32_t div) 
 {
     //uint32_t val = BF_RD(CLKCTRL_CPU, DIV_CPU);
     //INFO("CPU old Div:%lu\n", val);

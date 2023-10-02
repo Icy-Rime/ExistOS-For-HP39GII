@@ -5,7 +5,7 @@ MEMORY
 {
 	dma_mem       (rwx) : ORIGIN = 0x00000800, LENGTH =  6K
 	rom   		  (rwx) : ORIGIN = 0x00100000, LENGTH =  16M
-	ram 		  (rwx) : ORIGIN = 0x02000000, LENGTH =  (420)*1024
+	ram 		  (rwx) : ORIGIN = 0x02000000, LENGTH =  (400)*1024
 }
 
 ENTRY(__init)

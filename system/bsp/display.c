@@ -9,9 +9,7 @@
 //static SemaphoreHandle_t lock;
 
 extern unsigned char Ascii1608[];
-
-#define DISPLAY_INVERSE (1)
-
+ 
 #define SCREEN_START_Y (8) // 0 - 126
 #define SCREEN_END_Y (134)
 
@@ -91,19 +89,7 @@ DMA_MEM volatile static uint32_t DAT_2B;
 DMA_MEM volatile static uint32_t CMD;
 DMA_MEM volatile static uint32_t DAT;
 
-
-
-static bool LCDIF_checkSendFinish()
-{
-    return BF_RD(LCDIF_STAT, TXFIFO_EMPTY);
-}
-
-static bool LCDIF_checkDMAFin()
-{
-    // return true;//((HW_APBH_CHn_DEBUG2(0).B.AHB_BYTES) && (HW_APBH_CHn_DEBUG2(0).B.APB_BYTES));
-    return ((HW_APBH_CHn_SEMA(0).B.INCREMENT_SEMA) == 0);
-}
-
+ 
 static void LCDIF_DMAChainsInit()
 {
 //    memset((void *)&chains_wr, 0, sizeof(chains_wr));
@@ -298,134 +284,6 @@ void lcd_write_line(uint32_t line)
 }
 
 
-/*
-void lcd_wr_cmd(uint32_t cmd, uint32_t len)
-{
-    while ((HW_APBH_CHn_SEMA(0).B.INCREMENT_SEMA))
-        ;
-    while (!BF_RD(APBH_CTRL1, CH0_CMDCMPLT_IRQ))
-        ;
-    while (lock)
-        ;
-    lock++;
-
-    CMD = cmd;
-    
-    chains_wr.DMA_Command = BV_FLD(APBH_CHn_CMD, COMMAND, DMA_READ);
-    chains_wr.pDMABuffer = (uint32_t)&CMD;
-    chains_wr.DMA_XferBytes = len;
-    chains_wr.PioWord.B.COUNT = len;
-    chains_wr.PioWord.B.WORD_LENGTH = 1; // 8bit mode
-    chains_wr.PioWord.B.DATA_SELECT = 0; // 0:command mode   1:data mode
-    chains_wr.PioWord.B.RUN = 1;
-    chains_wr.PioWord.B.BYPASS_COUNT = 0;
-    chains_wr.PioWord.B.READ_WRITEB = 0; // 0:write mode  1:read mode
-
-    BF_WRn(APBH_CHn_NXTCMDAR, 0, CMD_ADDR, (reg32_t)&chains_wr);
-    BW_APBH_CHn_SEMA_INCREMENT_SEMA(0, 1);
-
-    while ((HW_APBH_CHn_SEMA(0).B.INCREMENT_SEMA))
-        ;
-    while (!BF_RD(APBH_CTRL1, CH0_CMDCMPLT_IRQ))
-        ;
-
-    if (BF_RD(LCDIF_CTRL1, OVERFLOW_IRQ) || BF_RD(LCDIF_CTRL1, UNDERFLOW_IRQ))
-    {
-        INFO("LCDIF ERR IRQ, Overflow:%d, Underflow:%d\n",
-             BF_RD(LCDIF_CTRL1, OVERFLOW_IRQ),
-             BF_RD(LCDIF_CTRL1, UNDERFLOW_IRQ));
-        BF_CLR(LCDIF_CTRL1, OVERFLOW_IRQ);
-        BF_CLR(LCDIF_CTRL1, UNDERFLOW_IRQ);
-    }
-
-    bsp_delayus(5);
-    lock--;
-}
-
-void lcd_wr_dat(uint32_t dat, uint32_t len)
-{
-    while ((HW_APBH_CHn_SEMA(0).B.INCREMENT_SEMA))
-        ;
-    while (!BF_RD(APBH_CTRL1, CH0_CMDCMPLT_IRQ))
-        ;
-    while (lock)
-        ;
-    lock++;
-
-    DAT = dat;
-    
-    chains_wr.DMA_Command = BV_FLD(APBH_CHn_CMD, COMMAND, DMA_READ);
-    chains_wr.pDMABuffer = (uint32_t)&DAT;
-    chains_wr.DMA_XferBytes = len;
-    chains_wr.PioWord.B.COUNT = len;
-    chains_wr.PioWord.B.WORD_LENGTH = 1; // 8bit mode
-    chains_wr.PioWord.B.DATA_SELECT = 1; // 0:command mode   1:data mode
-    chains_wr.PioWord.B.RUN = 1;
-    chains_wr.PioWord.B.BYPASS_COUNT = 0;
-    chains_wr.PioWord.B.READ_WRITEB = 0; // 0:write mode  1:read mode
-
-    BF_WRn(APBH_CHn_NXTCMDAR, 0, CMD_ADDR, (reg32_t)&chains_wr);
-    BW_APBH_CHn_SEMA_INCREMENT_SEMA(0, 1);
-
-    while ((HW_APBH_CHn_SEMA(0).B.INCREMENT_SEMA))
-        ;
-    while (!BF_RD(APBH_CTRL1, CH0_CMDCMPLT_IRQ))
-        ;
-
-    if (BF_RD(LCDIF_CTRL1, OVERFLOW_IRQ) || BF_RD(LCDIF_CTRL1, UNDERFLOW_IRQ))
-    {
-        INFO("LCDIF ERR IRQ, Overflow:%d, Underflow:%d\n",
-             BF_RD(LCDIF_CTRL1, OVERFLOW_IRQ),
-             BF_RD(LCDIF_CTRL1, UNDERFLOW_IRQ));
-        BF_CLR(LCDIF_CTRL1, OVERFLOW_IRQ);
-        BF_CLR(LCDIF_CTRL1, UNDERFLOW_IRQ);
-    }
-
-    bsp_delayus(5);
-    lock--;
-}
-
-void lcd_rd_dat(uint32_t len, uint32_t PA)
-{
-    while ((HW_APBH_CHn_SEMA(0).B.INCREMENT_SEMA))
-        ;
-    while (!BF_RD(APBH_CTRL1, CH0_CMDCMPLT_IRQ))
-        ;
-    while (lock)
-        ;
-    lock++;
-
-    chains_wr.DMA_Command = BV_FLD(APBH_CHn_CMD, COMMAND, DMA_WRITE);
-    chains_wr.pDMABuffer = PA;
-    chains_wr.DMA_XferBytes = len;
-    chains_wr.PioWord.B.COUNT = len;
-    chains_wr.PioWord.B.WORD_LENGTH = 1; // 8bit mode
-    chains_wr.PioWord.B.DATA_SELECT = 1; // 0:command mode   1:data mode
-    chains_wr.PioWord.B.RUN = 1;
-    chains_wr.PioWord.B.BYPASS_COUNT = 0;
-    chains_wr.PioWord.B.READ_WRITEB = 1; // 0:write mode  1:read mode
-
-    BF_WRn(APBH_CHn_NXTCMDAR, 0, CMD_ADDR, (reg32_t)&chains_wr);
-    BW_APBH_CHn_SEMA_INCREMENT_SEMA(0, 1);
-
-    while ((HW_APBH_CHn_SEMA(0).B.INCREMENT_SEMA))
-        ;
-    while (!BF_RD(APBH_CTRL1, CH0_CMDCMPLT_IRQ))
-        ;
-
-    if (BF_RD(LCDIF_CTRL1, OVERFLOW_IRQ) || BF_RD(LCDIF_CTRL1, UNDERFLOW_IRQ))
-    {
-        INFO("LCDIF ERR IRQ, Overflow:%d, Underflow:%d\n",
-             BF_RD(LCDIF_CTRL1, OVERFLOW_IRQ),
-             BF_RD(LCDIF_CTRL1, UNDERFLOW_IRQ));
-        BF_CLR(LCDIF_CTRL1, OVERFLOW_IRQ);
-        BF_CLR(LCDIF_CTRL1, UNDERFLOW_IRQ);
-    }
-
-    bsp_delayus(5);
-    lock--;
-}
-*/
 void lcd_read_line(uint32_t line)
 {
     

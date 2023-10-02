@@ -19,8 +19,8 @@ file_list_t *app_sel_flist = NULL;
 
 
 
-#define EXP_MAX_ALLOW_THREADS   (4)
-#define EXP_MAX_ALLOW_MMAPS     (3)
+#define EXP_MAX_ALLOW_THREADS   (5)
+#define EXP_MAX_ALLOW_MMAPS     (5)
 
 QueueHandle_t app_api_queue;
 
@@ -155,6 +155,12 @@ void app_stop()
     exp_mem_wrap_alloc = NULL;
  
     ll_mumap(exp_self_mmap);
+    printf("trim exp main mem\r\n");
+    for(uint32_t i = APP_RAM_MAP_ADDR; i < APP_RAM_MAP_ADDR + exp_mem_size; i+=1024)
+    {
+        ll_mm_trim_vaddr(i & ~(1023));
+    }
+
     for(int i = 0; i < EXP_MAX_ALLOW_MMAPS; i++)
     {
         if(exp_mmap_handle[i] > 0)
@@ -164,10 +170,7 @@ void app_stop()
         }
     }
 
-    for(uint32_t i = APP_RAM_MAP_ADDR; i < APP_RAM_MAP_ADDR + exp_mem_size; i+=1024)
-    {
-        ll_mm_trim_vaddr(i & ~(1023));
-    }
+
 
     xPortHeapTrimFreePage();
     exp_mem_size = 0;
@@ -176,6 +179,8 @@ void app_stop()
     memset(app_task_handle, 0, sizeof(app_task_handle));
     memset(exp_mmap_handle, 0, sizeof(exp_mmap_handle));
     memset(exp_mmap_info, 0, sizeof(exp_mmap_info));
+    
+    bsp_set_perf_level(4);
 
     xTaskResumeAll();
     vTaskDelay(pdMS_TO_TICKS(50)); 
@@ -194,7 +199,9 @@ void app_start()
     }
     tid = 0;
     char tid_buf[16];
-
+    
+    bsp_set_perf_level(0);
+    
     bsp_diaplay_clean(0xFF); 
 
     uint32_t *stackSz = (uint32_t *)(APP_ROM_MAP_ADDR + 8);
@@ -364,7 +371,7 @@ void app_api_task(void *p)
         {
             switch (info.code)
             {
-                case LL_SWI_THREAD_CREATE:
+                case LLAPI_THREAD_CREATE:
                     info.context[0] = -1;
                     for(int i = 0; i < EXP_MAX_ALLOW_THREADS; i++)
                     {
@@ -437,11 +444,17 @@ void app_api_task(void *p)
             }
         }
 
+        if(bsp_is_key_down(KEY_ON) && bsp_is_key_down(KEY_F6))
+        {
+            bsp_reset();
+        }
+
         if(bsp_is_key_down(KEY_ON) && bsp_is_key_down(KEY_F5))
         {
             if(app_is_running())
             {
                 printf("Save state\r\n");
+                ll_fs_dir_mkdir(STATE_SAVE_DIR);
                 _ON_LongPress = 0; 
 
                 vTaskSuspendAll();
@@ -658,7 +671,7 @@ static void draw_main(file_list_t *flist, char *path, int select)
             c = c->next;
         } 
     }
-    bar_puts(0, 7, " RUN |    | UP |DOWN|    |RET  ", 0);
+    bar_puts(0, 7, " RUN |    |PREV|NEXT|    |RET  ", 0);
 }
 
 
@@ -783,7 +796,7 @@ static void load_sav(char *sav_path)
                 exp_mmap_info[i].path = calloc(1, 128);
                 assert(exp_mmap_info[i].path);
 
-                ll_fs_read(f, (void *)exp_mmap_info[i].path, 127);
+                ll_fs_read(f, (void *)exp_mmap_info[i].path, 128);
                 
                 exp_mmap_handle[i] = ll_mmap(&exp_mmap_info[i]);
             }else{
@@ -964,7 +977,6 @@ void app_selector(void *__)
  
 void app_api_init()
 { 
-    ll_fs_dir_mkdir(STATE_SAVE_DIR);
 
     memset(app_tcb, 0, sizeof(app_tcb));
     memset(app_task_handle, 0, sizeof(app_task_handle));

@@ -32,6 +32,13 @@
 #define LLAPI_MUNMAP           (LLAPI_SWI_BASE + 21)
 
 
+#define LLAPI_THREAD_CREATE                   (LLAPI_SWI_BASE + 160)
+#define LLAPI_SET_PERF_LEVEL                  (LLAPI_SWI_BASE + 170)
+
+
+
+
+
 #define LL_SWI_FS_SIZE                 (LL_SWI_BASE + 119)
 #define LL_SWI_FS_REMOVE               (LL_SWI_BASE + 120)
 #define LL_SWI_FS_RENAME               (LL_SWI_BASE + 121)
@@ -61,7 +68,6 @@
 #define LL_SWI_FS_GET_DIROBJ_SZ                (LL_SWI_BASE + 143)
 
 
-#define LL_SWI_THREAD_CREATE                  (LL_SWI_BASE + 160)
 
 
 #define FS_FILE_TYPE_REG   (1)
@@ -135,7 +141,8 @@ DECDEF_LLAPI_SWI(int,               llapi_mmap,              (mmap_info *info)  
 DECDEF_LLAPI_SWI(void,              llapi_mumap,             (int map)                                   ,LLAPI_MUNMAP                );
 
 
-DECDEF_LLAPI_SWI(int,           llapi_thread_create,     (void *code, uint32_t *stack, uint32_t stackSz, void *par)  ,LL_SWI_THREAD_CREATE    );
+DECDEF_LLAPI_SWI(int,           llapi_thread_create,     (void *code, uint32_t *stack, uint32_t stackSz, void *par)  ,LLAPI_THREAD_CREATE     );
+DECDEF_LLAPI_SWI(void,          llapi_set_perf_level,    (int level)                                                 ,LLAPI_SET_PERF_LEVEL    );
 
 #ifdef __cplusplus          
     }          
