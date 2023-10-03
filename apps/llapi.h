@@ -33,11 +33,14 @@
 
 
 #define LLAPI_THREAD_CREATE                   (LLAPI_SWI_BASE + 160)
+#define LLAPI_APP_EXIT                        (LLAPI_SWI_BASE + 161)
 #define LLAPI_SET_PERF_LEVEL                  (LLAPI_SWI_BASE + 170)
 
 
 
 
+#define LL_SWI_ICACHE_INV               (LL_SWI_BASE + 117)
+#define LL_SWI_DCACHE_CLEAN             (LL_SWI_BASE + 118)
 
 #define LL_SWI_FS_SIZE                 (LL_SWI_BASE + 119)
 #define LL_SWI_FS_REMOVE               (LL_SWI_BASE + 120)
@@ -142,7 +145,12 @@ DECDEF_LLAPI_SWI(void,              llapi_mumap,             (int map)          
 
 
 DECDEF_LLAPI_SWI(int,           llapi_thread_create,     (void *code, uint32_t *stack, uint32_t stackSz, void *par)  ,LLAPI_THREAD_CREATE     );
+DECDEF_LLAPI_SWI(void,          llapi_app_stop,          (void)                                                      ,LLAPI_APP_EXIT          );
 DECDEF_LLAPI_SWI(void,          llapi_set_perf_level,    (int level)                                                 ,LLAPI_SET_PERF_LEVEL    );
+
+DECDEF_LLAPI_SWI(void,          llapi_invalidate_icache,    (void)                                                   ,LL_SWI_ICACHE_INV       );
+DECDEF_LLAPI_SWI(void,          llapi_clean_dcache,         (void *base, uint32_t size)                              ,LL_SWI_DCACHE_CLEAN       );
+
 
 #ifdef __cplusplus          
     }          

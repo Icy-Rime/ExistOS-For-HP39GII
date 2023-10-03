@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#define MAX_DECODE_BLOCKS ((1 << 6) - 1)
+#define MAX_DECODE_BLOCKS ((1 << 5) - 1)
 //#define INS_PER_DB (16)
 
 #define ENABLE_RV32C (1)
@@ -112,8 +112,10 @@ typedef enum IROpcode
 typedef struct IRCode
 {
     // struct IRCode *next; src_len
-    uint32_t rd, rs1, rs2;
     uint32_t imm;
+    uint32_t rd; 
+    uint32_t rs1;
+    uint32_t rs2;
     IROpcode opcode;
 } IRCode;
 
@@ -125,6 +127,8 @@ typedef struct DecodeBlock
     uint32_t exec_cnt;
     uint32_t src_ins_len;
     IRCode *Ins;
+    uint32_t *jit_jmp_tab;
+    uint32_t *jit_code; 
 } DecodeBlock;
 
 int GetCachedDBByAddr(uint32_t src_pc, DecodeBlock **DB, uint32_t *offset);

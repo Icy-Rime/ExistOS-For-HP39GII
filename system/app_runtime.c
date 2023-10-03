@@ -404,6 +404,11 @@ void app_api_task(void *p)
                 case LLAPI_APP_DELAY_MS:
                     vOtherTaskDelay(info.task, pdMS_TO_TICKS(info.par0));
                     break; 
+                case LLAPI_APP_EXIT:
+                    _ON_LongPress = 0;
+                    app_stop();
+                    app_selector_start();
+                    break;
                 
                 case LLAPI_MMAP:
                     for(int i = 0; i < EXP_MAX_ALLOW_MMAPS; i++)

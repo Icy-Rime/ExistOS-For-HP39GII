@@ -6,14 +6,14 @@
 #define DB_CACHE_SOCKET (MAX_DECODE_BLOCKS)
 
 DecodeBlock DBs[MAX_DECODE_BLOCKS];
-DecodeBlock *DBCacheSlot[(MAX_DECODE_BLOCKS + 1)];
+//DecodeBlock *DBCacheSlot[(MAX_DECODE_BLOCKS + 1)];
 
 #define address_hash(x) ((x >> 2) & DB_CACHE_SOCKET)
 
 int DecodeInit()
 {
     memset(DBs, 0, sizeof(DBs));
-    memset(DBCacheSlot, 0, sizeof(DBCacheSlot));
+    //memset(DBCacheSlot, 0, sizeof(DBCacheSlot));
     printf("IR Cache SZ:%d\n", (uint32_t)sizeof(DBs));
     return 0;
 }
@@ -80,6 +80,17 @@ DecodeBlock *PrepareNewDB(uint32_t src_pc)
     DBs[minimum_i].src_pc = src_pc;
     DBs[minimum_i].IR_Length = 0;
     DBs[minimum_i].src_codes_length = 0;
+    if(DBs[minimum_i].jit_jmp_tab)
+    {
+        free(DBs[minimum_i].jit_jmp_tab);
+        DBs[minimum_i].jit_jmp_tab = NULL;
+    }
+    if(DBs[minimum_i].jit_code)
+    {
+        free(DBs[minimum_i].jit_code);
+        DBs[minimum_i].jit_code = NULL;
+    }
+
     if(DBs[minimum_i].Ins)
     {
         free(DBs[minimum_i].Ins);
@@ -103,7 +114,7 @@ int DBInsertIRCode(DecodeBlock *DB,
     DB->Ins = newirc;
     DB->Ins[DB->IR_Length] = IRC;
     DB->IR_Length++;
-    if(DB->IR_Length > 127)
+    if(DB->IR_Length > 511)
        return 1;
     return 0;
     //if (INS_PER_DB - DB->IR_Length > 3)
@@ -134,7 +145,7 @@ void UndIns(DecodeBlock *DB,
     memoryVirtAddrRead(vaddr + 2, 1, &((uint8_t *)&ins)[2]);
     memoryVirtAddrRead(vaddr + 3, 1, &((uint8_t *)&ins)[3]);
 
-    printf("UND at %08x:%08x\n", vaddr, ins);
+    printf("Decode UND at %08x:%08x\n", vaddr, ins);
 
     exit(-1);
 }
@@ -213,7 +224,9 @@ int DecodeSrc(uint32_t VirtAddr)
     uint32_t rs2 = 0;
 
     // curIns = memoryVirtAddrRead16(curVaddr);
-    memoryVirtAddrRead(curVaddr, 2, &curIns);
+    //memoryVirtAddrRead(curVaddr, 2, &curIns);
+    curIns = *fastptr16(curVaddr);
+
     if ((curIns & 0b11) != 0b11)
     {
         compress = 1;
@@ -223,7 +236,8 @@ int DecodeSrc(uint32_t VirtAddr)
     while (st)
     {
 
-        memoryVirtAddrRead(curVaddr, 2, &curIns);
+        //memoryVirtAddrRead(curVaddr, 2, &curIns);
+        curIns = *fastptr16(curVaddr);
 
         if ((curIns & 0b11) != 0b11)
         {
@@ -240,7 +254,10 @@ int DecodeSrc(uint32_t VirtAddr)
             {
                 return 0;
             }
-            memoryVirtAddrRead(curVaddr + 2, 2, &((uint16_t *)&curIns)[1]);
+            //memoryVirtAddrRead(curVaddr + 2, 2, &((uint16_t *)&curIns)[1]);
+            
+            ((uint16_t *)&curIns)[1] = *fastptr16(curVaddr + 2);
+            
             opcode = curIns & 0x7F;
             funct3 = (curIns >> 12) & 7;
             funct7 = (curIns >> 25) & 0xFF;
@@ -1076,36 +1093,43 @@ int DecodeSrc(uint32_t VirtAddr)
                 {
                     IRC.opcode = IR_OPCODE_ECALL;
                     ret = DBInsertIRCode(curDB, IRC);
+                    st = 0;
                 }
                 else if ((csr == ((0b0000000 << 5) | (0b00001))) && (rs1 == 0b00000) && (funct3 == 0b000) && (rd == 0b00000))
                 {
                     IRC.opcode = IR_OPCODE_EBREAK;
                     ret = DBInsertIRCode(curDB, IRC);
+                    st = 0;
                 }
                 else if ((csr == ((0b0000000 << 5) | (0b00010))) && (rs1 == 0b00000) && (funct3 == 0b000) && (rd == 0b00000))
                 {
                     IRC.opcode = IR_OPCODE_URET;
                     ret = DBInsertIRCode(curDB, IRC);
+                    st = 0;
                 }
                 else if ((csr == ((0b0001000 << 5) | (0b00010))) && (rs1 == 0b00000) && (funct3 == 0b000) && (rd == 0b00000))
                 {
                     IRC.opcode = IR_OPCODE_SRET;
                     ret = DBInsertIRCode(curDB, IRC);
+                    st = 0;
                 }
                 else if ((csr == ((0b0010000 << 5) | (0b00010))) && (rs1 == 0b00000) && (funct3 == 0b000) && (rd == 0b00000))
                 {
                     IRC.opcode = IR_OPCODE_HRET;
                     ret = DBInsertIRCode(curDB, IRC);
+                    st = 0;
                 }
                 else if ((csr == ((0b0011000 << 5) | (0b00010))) && (rs1 == 0b00000) && (funct3 == 0b000) && (rd == 0b00000))
                 {
                     IRC.opcode = IR_OPCODE_MRET;
                     ret = DBInsertIRCode(curDB, IRC);
+                    st = 0;
                 }
                 else if ((csr == ((0b0111001 << 5) | (0b10010))) && (rs1 == 0b00000) && (funct3 == 0b000) && (rd == 0b00000))
                 {
                     IRC.opcode = IR_OPCODE_DRET;
                     ret = DBInsertIRCode(curDB, IRC);
+                    st = 0;
                 }
                 else if ((csr == ((0b0001000 << 5) | (0b00100))) && (funct3 == 0b000) && (rd == 0b00000))
                 {

@@ -63,3 +63,7 @@ DECDEF_LLAPI_SWI(void,              llapi_mumap,             (int map)          
 DECDEF_LLAPI_SWI(int,           llapi_thread_create,     (void *code, uint32_t *stack, uint32_t stackSz, void *par)  ,LLAPI_THREAD_CREATE    );
 DECDEF_LLAPI_SWI(void,          llapi_set_perf_level,    (int level)                                                 ,LLAPI_SET_PERF_LEVEL    );
 
+
+DECDEF_LLAPI_SWI(void,          llapi_app_stop,          (void)                                                      ,LLAPI_APP_EXIT          );
+DECDEF_LLAPI_SWI(void,          llapi_invalidate_icache,    (void)                                                   ,LL_SWI_ICACHE_INV       );
+DECDEF_LLAPI_SWI(void,          llapi_clean_dcache,         (void *base, uint32_t size)                              ,LL_SWI_DCACHE_CLEAN       );

@@ -130,37 +130,6 @@ void __attribute__((naked)) __attribute__((target("arm"))) sys_svc()
 
     switch (swi_code)
     {
-    case LLAPI_APP_DELAY_MS: 
-        {
-            app_api_info_t info;
-            uint32_t ShouldYield = 0;
-            info.task = (TaskHandle_t)pxCurrentTCB;
-            info.code = swi_code;
-            info.par0 = pRegFram[0 + 2];
-            info.context = &pRegFram[0 + 2];
-            xQueueSendFromISR(app_api_queue, &info, &ShouldYield);
-            if(ShouldYield)
-            {
-                vTaskSwitchContext(); 
-            }
-        }
-        break;
-    case LLAPI_MMAP:
-    case LLAPI_MUNMAP:
-        {
-            app_api_info_t info;
-            uint32_t ShouldYield = 0;
-            info.task = (TaskHandle_t)pxCurrentTCB;
-            info.code = swi_code;
-            info.par0 = pRegFram[0 + 2];
-            info.context = &pRegFram[0 + 2];
-            xQueueSendFromISR(app_api_queue, &info, &ShouldYield);
-            if(ShouldYield)
-            {
-                vTaskSwitchContext(); 
-            }
-        }
-        break;
     case LLAPI_APP_STDOUT_PUTC:
         putchar(pRegFram[0 + 2]);
         break;
@@ -214,7 +183,12 @@ void __attribute__((naked)) __attribute__((target("arm"))) sys_svc()
     case LLAPI_SET_PERF_LEVEL:
         bsp_set_perf_level(pRegFram[0 + 2]);
         break;
+    
+    case LLAPI_MMAP:
+    case LLAPI_MUNMAP:
+    case LLAPI_APP_EXIT:
     case LLAPI_THREAD_CREATE:
+    case LLAPI_APP_DELAY_MS:
     {
             app_api_info_t info;
             uint32_t ShouldYield = 0;

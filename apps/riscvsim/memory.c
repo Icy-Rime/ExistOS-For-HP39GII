@@ -10,13 +10,16 @@
 
 #define ROM_NAME    "cm.bin"
 
-uint8_t *testMem = NULL;
+uint8_t *SRAM = NULL;
+uint8_t *SROM = NULL;
 
 #define ROM_MMAP_ADDR       (0x04000000)
 
-uint32_t mmap_sz = 0;
+uint32_t ROMSZ = 0;
 
 extern uint32_t CurPC;
+
+
 
 int memoryVirtAddrRead(uint32_t rd_address, uint32_t sz, void *data)
 {
@@ -34,7 +37,7 @@ int memoryVirtAddrRead(uint32_t rd_address, uint32_t sz, void *data)
         if (address < MEMORY_SIZE)
         {
             //printf("adr:%08x\n", address);
-            p = &testMem[address];
+            p = &SRAM[address];
         }
         else
         {
@@ -46,7 +49,7 @@ int memoryVirtAddrRead(uint32_t rd_address, uint32_t sz, void *data)
 
     case ROM_BASE:
     {
-        if (address < mmap_sz)
+        if (address < ROMSZ)
             p = (void *)(ROM_MMAP_ADDR + address);
         else{
             printf("ROM OOM:%08x at %08x\n", address, CurPC);
@@ -130,7 +133,7 @@ int memoryVirtAddrWrite(uint32_t wr_address, uint32_t sz, uint32_t data)
     {
         if (address < MEMORY_SIZE)
         {
-            p = (uint8_t *)testMem + address;
+            p = (uint8_t *)SRAM + address;
         }
         else
         {
@@ -194,7 +197,7 @@ void dumpMem()
 {
     for (int i = 0; i < 12; i++)
     {
-        printf("%08x\n", testMem[i]);
+        printf("%08x\n", SRAM[i]);
     }
 }
 
@@ -218,9 +221,9 @@ uint32_t get_rom_sz()
 
 int memoryInit()
 {
-    testMem = calloc(1, MEMORY_SIZE); 
-
-    if( mmap_sz = get_rom_sz())
+    SRAM = calloc(1, MEMORY_SIZE); 
+    SROM = (uint8_t *)ROM_MMAP_ADDR;
+    if( ROMSZ = get_rom_sz())
     {
         mmap_info mf;
         mf.map_to = ROM_MMAP_ADDR;
@@ -230,7 +233,7 @@ int memoryInit()
         mf.writable = false;
         mf.writeback = false;
         int ret = llapi_mmap(&mf);
-        printf("mmap rom:%d sz: %ld\r\n", ret, mmap_sz);
+        printf("mmap rom:%d sz: %ld\r\n", ret, ROMSZ);
     }else{
         printf("MMAP ERROR\r\n");
     }

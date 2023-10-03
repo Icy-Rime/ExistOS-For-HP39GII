@@ -147,6 +147,8 @@ void volatile __attribute__((target("arm"))) __attribute__((naked)) arm_vector_u
 #define LL_SWI_SET_MEM_TRIM           (LL_SWI_BASE + 100)
 #define LL_SWI_MEM_IS_VAILD             (LL_SWI_BASE + 101)
 #define LL_SWI_MEM_IS_DIRTY             (LL_SWI_BASE + 116)
+#define LL_SWI_ICACHE_INV               (LL_SWI_BASE + 117)
+#define LL_SWI_DCACHE_CLEAN             (LL_SWI_BASE + 118)
 
 #define LL_SWI_SET_DAB_VECTOR            (LL_SWI_BASE + 102)
 #define LL_SWI_SET_PAB_VECTOR            (LL_SWI_BASE + 103)
@@ -286,6 +288,13 @@ void __attribute__((target("arm")))  do_svc(uint32_t *cur_sp)
     //printf("sp:%p\r\n", cur_sp);
 
     switch (swi_code) {
+    case LL_SWI_ICACHE_INV:
+        mmu_invalidate_icache();
+        break;
+    case LL_SWI_DCACHE_CLEAN: 
+        mmu_clean_invalidated_dcache((void *)cur_sp[0], cur_sp[1]);
+        mmu_drain_buffer();
+        break;
     case LL_SWI_GET_BOOT0_LOG_CHAR:
         {
             uint8_t boot1_log_get_ch();

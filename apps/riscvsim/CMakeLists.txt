@@ -8,7 +8,7 @@ include_directories(..)
 aux_source_directory(. ${APP_NAME}_SRCS)
 add_executable(${APP_NAME}.elf ../llapi.c ${${APP_NAME}_SRCS})
 
-  
+   
 
 target_compile_options(${APP_NAME}.elf PRIVATE -mtune=arm926ej-s -mcpu=arm926ej-s -mlittle-endian -mfloat-abi=soft -marm -O3  ) 
   
