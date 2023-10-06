@@ -80,10 +80,10 @@ static uint64_t LCDIFFreq;
 
 DMA_MEM volatile static LCDIF_DMADesc chains_wr_rd_line[6+2];
 
-DMA_MEM volatile __aligned(4) const static uint8_t CMD_2A = 0x2A;
-DMA_MEM volatile __aligned(4) const static uint8_t CMD_2B = 0x2B;
-DMA_MEM volatile __aligned(4) const static uint8_t CMD_2C = 0x2C;
-DMA_MEM volatile __aligned(4) const static uint8_t CMD_2E = 0x2E;
+DMA_MEM volatile __aligned(4) static uint8_t CMD_2A = 0x2A;
+DMA_MEM volatile __aligned(4) static uint8_t CMD_2B = 0x2B;
+DMA_MEM volatile __aligned(4) static uint8_t CMD_2C = 0x2C;
+DMA_MEM volatile __aligned(4) static uint8_t CMD_2E = 0x2E;
 DMA_MEM volatile static uint32_t DAT_2A;
 DMA_MEM volatile static uint32_t DAT_2B;
 DMA_MEM volatile static uint32_t CMD;
