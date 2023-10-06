@@ -437,7 +437,7 @@ void __attribute__((target("arm")))  do_svc(uint32_t *cur_sp)
 
     case LL_SWI_FS_DIR_GET_CUR_NAME:
         {
-            if(!is_addr_vaild(cur_sp[0], 1)){mem_chk_err(swi_code, cur_sp[0], cur_sp[1]); cur_sp[0] = -EINVAL; break;}
+            if(!is_addr_vaild(cur_sp[0], 1)){mem_chk_err(swi_code, cur_sp[0], cur_sp[1]); cur_sp[0] = NULL; break;}
             fs_dir_obj_t *fs_dirobj = (fs_dir_obj_t *)cur_sp[0];
             struct lfs_info *dir_info = &fs_dirobj->info;
             cur_sp[0] = (uint32_t)dir_info->name;

@@ -70,11 +70,36 @@
 #define LL_SWI_FS_GET_FOBJ_SZ                  (LL_SWI_BASE + 142)
 #define LL_SWI_FS_GET_DIROBJ_SZ                (LL_SWI_BASE + 143)
 
-
-
-
 #define FS_FILE_TYPE_REG   (1)
 #define FS_FILE_TYPE_DIR   (2)
+
+#define FS_O_RDONLY    0         /* +1 == FREAD */
+#define FS_O_WRONLY    1         /* +1 == FWRITE */
+#define FS_O_RDWR      2         /* +1 == FREAD|FWRITE */
+#define FS_O_CREAT     0x0200    /* open with file create */
+#define FS_O_EXCL      0x0800    /* error on open if file exists */
+#define FS_O_TRUNC     0x0400    /* open with truncation */
+#define FS_O_APPEND    0x0008    /* append (writes guaranteed at the end) */
+
+#define FS_SEEK_SET   0          /* Seek relative to an absolute position */
+#define FS_SEEK_CUR   1          /* Seek relative to the current file position */
+#define FS_SEEK_END   2          /* Seek relative to the end of the file */
+
+#define FS_ERR_OK           0,    /* No error */
+#define FS_ERR_IO           -5,   /* Error during device operation */
+#define FS_ERR_CORRUPT      -84,  /* Corrupted */
+#define FS_ERR_NOENT        -2,   /* No directory entry */
+#define FS_ERR_EXIST        -17,  /* Entry already exists */
+#define FS_ERR_NOTDIR       -20,  /* Entry is not a dir */
+#define FS_ERR_ISDIR        -21,  /* Entry is a dir */
+#define FS_ERR_NOTEMPTY     -39,  /* Dir is not empty */
+#define FS_ERR_BADF         -9,   /* Bad file number */
+#define FS_ERR_FBIG         -27,  /* File too large */
+#define FS_ERR_INVAL        -22,  /* Invalid parameter */
+#define FS_ERR_NOSPC        -28,  /* No space left on device */
+#define FS_ERR_NOMEM        -12,  /* No more memory available */
+#define FS_ERR_NOATTR       -61,  /* No data/attr available */
+#define FS_ERR_NAMETOOLONG  -36,  /* File name too long */
 
 typedef void* fs_obj_t;
 typedef void* fs_dir_obj_t;
@@ -107,8 +132,8 @@ DECDEF_LLAPI_SWI(int,           llapi_is_key_down,           (uint32_t key),    
 DECDEF_LLAPI_SWI(uint32_t,      llapi_rtc_get_s,             (void),                                            LLAPI_APP_RTC_GET_S)
 DECDEF_LLAPI_SWI(uint32_t,      llapi_rtc_set_s,             (uint32_t s),                                      LLAPI_APP_RTC_SET_S)
           
-DECDEF_LLAPI_SWI(void,          llapi_disp_put_point,        (uint32_t x, uint32_t y, int c),                   LLAPI_APP_DISP_PUT_P)
-DECDEF_LLAPI_SWI(int,           llapi_disp_get_point,        (uint32_t x, uint32_t y),                          LLAPI_APP_DISP_GET_P)
+DECDEF_LLAPI_SWI(void,          llapi_disp_put_point,        (uint32_t x, uint32_t y, uint32_t c),              LLAPI_APP_DISP_PUT_P)
+DECDEF_LLAPI_SWI(uint32_t,      llapi_disp_get_point,        (uint32_t x, uint32_t y),                          LLAPI_APP_DISP_GET_P)
 DECDEF_LLAPI_SWI(void,          llapi_disp_put_hline,        (uint32_t y, char *dat),                           LLAPI_APP_DISP_PUT_HLINE)
 DECDEF_LLAPI_SWI(void,          llapi_disp_put_hline_len,    (uint32_t y, char *dat, uint32_t len),             LLAPI_APP_DISP_PUT_HLINE_LEN)
 DECDEF_LLAPI_SWI(void,          llapi_disp_put_kstr,         (uint32_t x, uint32_t y, char *s, uint32_t fgbg),  LLAPI_APP_DISP_PUT_KSTRING)
@@ -127,16 +152,16 @@ DECDEF_LLAPI_SWI(int,           llapi_fs_write,              (fs_obj_t fobj, voi
 DECDEF_LLAPI_SWI(int,           llapi_fs_seek,               (fs_obj_t fobj, uint32_t off, int whence)   ,LL_SWI_FS_SEEK               );
 DECDEF_LLAPI_SWI(int,           llapi_fs_rewind,             (fs_obj_t fobj)                             ,LL_SWI_FS_REWIND             );
 DECDEF_LLAPI_SWI(int,           llapi_fs_truncate,           (fs_obj_t fobj, uint32_t size)              ,LL_SWI_FS_TRUNCATE           );
-DECDEF_LLAPI_SWI(uint32_t,      llapi_fs_tell,               (fs_obj_t fobj)                             ,LL_SWI_FS_TELL               );
+DECDEF_LLAPI_SWI(int,           llapi_fs_tell,               (fs_obj_t fobj)                             ,LL_SWI_FS_TELL               );
 DECDEF_LLAPI_SWI(int,           llapi_fs_dir_mkdir,          (const char* path)                          ,LL_SWI_FS_DIR_MKDIR          );
 DECDEF_LLAPI_SWI(int,           llapi_fs_dir_open,           (fs_dir_obj_t dir_obj, const char* path)    ,LL_SWI_FS_DIR_OPEN           );
 DECDEF_LLAPI_SWI(int,           llapi_fs_dir_close,          (fs_dir_obj_t dir_obj)                      ,LL_SWI_FS_DIR_CLOSE          );
 DECDEF_LLAPI_SWI(int,           llapi_fs_dir_seek,           (fs_dir_obj_t dir_obj, uint32_t off)        ,LL_SWI_FS_DIR_SEEK           );
-DECDEF_LLAPI_SWI(uint32_t,      llapi_fs_dir_tell,           (fs_dir_obj_t dir_obj)                      ,LL_SWI_FS_DIR_TELL           );
-DECDEF_LLAPI_SWI(uint32_t,      llapi_fs_dir_rewind,         (fs_dir_obj_t dir_obj)                      ,LL_SWI_FS_DIR_REWIND         );
-DECDEF_LLAPI_SWI(uint32_t,      llapi_fs_dir_read,           (fs_dir_obj_t dir_obj)                      ,LL_SWI_FS_DIR_READ           );
+DECDEF_LLAPI_SWI(int,           llapi_fs_dir_tell,           (fs_dir_obj_t dir_obj)                      ,LL_SWI_FS_DIR_TELL           );
+DECDEF_LLAPI_SWI(int,           llapi_fs_dir_rewind,         (fs_dir_obj_t dir_obj)                      ,LL_SWI_FS_DIR_REWIND         );
+DECDEF_LLAPI_SWI(int,           llapi_fs_dir_read,           (fs_dir_obj_t dir_obj)                      ,LL_SWI_FS_DIR_READ           );
 DECDEF_LLAPI_SWI(const char *,  llapi_fs_dir_cur_item_name,  (fs_dir_obj_t dir_obj)                      ,LL_SWI_FS_DIR_GET_CUR_NAME   );
-DECDEF_LLAPI_SWI(uint32_t,      llapi_fs_dir_cur_item_size,  (fs_dir_obj_t dir_obj)                      ,LL_SWI_FS_DIR_GET_CUR_SIZE   );
+DECDEF_LLAPI_SWI(int,           llapi_fs_dir_cur_item_size,  (fs_dir_obj_t dir_obj)                      ,LL_SWI_FS_DIR_GET_CUR_SIZE   );
 DECDEF_LLAPI_SWI(int,           llapi_fs_dir_cur_item_type,  (fs_dir_obj_t dir_obj)                      ,LL_SWI_FS_DIR_GET_CUR_TYPE   );
 
 
