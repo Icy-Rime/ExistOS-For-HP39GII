@@ -546,7 +546,7 @@ char *Setup_SetEntry(unsigned int index, char setting) {
 
 
 int RTC_GetTicks() {
-    return llapi_rtc_get_s();
+    return (int) llapi_rtc_get_s();
 }
 
 void RTC_SetDateTime(unsigned char *time) {

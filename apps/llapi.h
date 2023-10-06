@@ -104,7 +104,7 @@ DECDEF_LLAPI_SWI(uint32_t,      llapi_get_tick_ms,           (void),            
 DECDEF_LLAPI_SWI(uint32_t,      llapi_get_tick_us,           (void),                                            LLAPI_APP_GET_TICK_US)
 DECDEF_LLAPI_SWI(int,           llapi_query_key,             (void),                                            LLAPI_APP_QUERY_KEY)
 DECDEF_LLAPI_SWI(int,           llapi_is_key_down,           (uint32_t key),                                    LLAPI_APP_IS_KEY_DOWN)
-DECDEF_LLAPI_SWI(int,           llapi_rtc_get_s,             (void),                                            LLAPI_APP_RTC_GET_S)
+DECDEF_LLAPI_SWI(uint32_t,      llapi_rtc_get_s,             (void),                                            LLAPI_APP_RTC_GET_S)
 DECDEF_LLAPI_SWI(uint32_t,      llapi_rtc_set_s,             (uint32_t s),                                      LLAPI_APP_RTC_SET_S)
           
 DECDEF_LLAPI_SWI(void,          llapi_disp_put_point,        (uint32_t x, uint32_t y, int c),                   LLAPI_APP_DISP_PUT_P)
